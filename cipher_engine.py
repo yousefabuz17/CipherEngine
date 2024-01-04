@@ -426,8 +426,9 @@ class _BaseEngine(_BasePower):
                         rename=False, module=None,
                         defaults=None, 
                         values: Iterable=None,
-                        field_doc='Tuple containing dependecies for decryption purposes.',
-                        **kwargs):
+                        num_attrs: int=5,
+                        field_doc='Tuple containing dependecies for decryption purposes.'
+                        ):
         """
         Create a dynamically generated namedtuple subclass.
         
@@ -438,15 +439,13 @@ class _BaseEngine(_BasePower):
         - module (str): Module name for the namedtuple subclass.
         - defaults (Tuple): Default values for fields.
         - num_attrs (int): Number of default attributes if field_names is not provided.
-        - **kwargs: Additional parameters.
-            - num_attrs (int): The number of default attributes assigned to the object when no specific field names are provided.
-            - field_doc (str): List of documentation strings for each field.
+        - num_attrs (int): The number of default attributes assigned to the object when no specific field names are provided.
+        - field_doc (str): List of documentation strings for each field.
         
         Returns:
         - Named tuple subclass.
         """
         
-        num_attrs = kwargs.pop('num_attrs', 5)
         if not isinstance(num_attrs, int) or num_attrs <= 0:
             raise CipherException(f"{num_attrs!r} is not a positive integer.")
         
@@ -588,10 +587,10 @@ class _BaseEngine(_BasePower):
         Returns:
         - str: The SHA-256 hash value as a hexadecimal string.
         """
-        _text = self._validate_object(__text, type_is=str).encode()
-        _hash = hashlib.sha256()
-        _hash.update(_text)
-        return _hash.hexdigest()
+        valid_text = self._validate_object(__text, type_is=str).encode()
+        hash_ = hashlib.sha256()
+        hash_.update(valid_text)
+        return hash_.hexdigest()
     
     @staticmethod
     def _validate_object(__other, type_is=int, arg='Argument'):
@@ -793,7 +792,7 @@ class _BaseEngine(_BasePower):
                 parser.write(_file)
             else:
                 _file.write(data)
-            p_string = partial('{_file!r} has successfully been {reason} as {_path}'.format,
+            p_string = partial('{_file!r} has successfully been {reason} as {_path!r}'.format,
                         _file=_file.name, _path=_file)
             if verbose:
                 CEerror(p_string(reason=reason or 'written'))
@@ -1059,6 +1058,7 @@ class CipherEngine(_BaseEngine):
         
         org_text = self._validate_object(self.text, type_is=str)
         hashed_text = self._calc_str_hash(org_text)
+        print(hashed_text)
         passphrase = self.passkey
         if not passphrase:
             passphrase = self._passkey
@@ -1071,10 +1071,12 @@ class CipherEngine(_BaseEngine):
         _base64 = lambda _x: self._base64_key(_x).decode()
         encrypted_data = self._create_subclass(
                             self.__class__.__name__,
-                            ('original_text', 'encrypted_text', 'decipher_key'),
-                            values=(org_text, _base64(cipher_text), _base64(passkey)),
-                            hash_value=hashed_text
+                            field_names=('original_text', 'encrypted_text',
+                                        'decipher_key', 'hash_value'),
+                            values=(org_text, _base64(cipher_text),
+                                    _base64(passkey), hashed_text)
                             )
+        
         if self.export_passkey:
             _file = Path('ciphertext_info')
             if self.export_path:
@@ -1091,13 +1093,16 @@ class CipherEngine(_BaseEngine):
     @classmethod
     def quick_encrypt(cls, *,
                         text,
+                        passkey=None,
                         file_name='ciphertext_info',
                         export_passkey=True,
                         export_path=None) -> NamedTuple:
+        
         cls._print_header(cls, 'Quick-CipherText')
         hashed_text = cls._calc_str_hash(cls, text)
-        passkey = cls._base64_key(cls._generate_key(key_length=32).encode())
-        fernet = cls._new_fernet(passkey)
+        if not passkey:
+            passkey = cls._base64_key(cls._generate_key(key_length=32).encode())
+            fernet = cls._new_fernet(passkey)
         encrypted_bytes = fernet.encrypt(text.encode())
         cipher_text = encrypted_bytes.hex()
         encrypted_data = cls._create_subclass(cls.__name__,
@@ -1299,35 +1304,35 @@ class DecipherEngine(_BaseEngine):
 
 def generate_cipher_key(**kwargs):
     """
-        ### Generate a cryptographic key.
+    ### Generate a cryptographic key.
+    
+    #### Parameters:
+        - key_length (Union[int, str]): The length of the key. Defaults to 32.
+            - Important Note: key_length soley depends on the max_tokens count.
+            Length must be greater than max_tokens count.
+        - exclude (Union[str, Iterable]): Characters to exclude from the key generation.
+        Can be a string or an iterable of characters. Defaults to an empty string.
+        - include_all (bool): If True, include all characters from digits, ascii_letters, and punctuation.
+        Defaults to False.
+        - repeat (int): The number of iterations for character cycling. Defaults to None.
         
-        #### Parameters:
-            - key_length (Union[int, str]): The length of the key. Defaults to 32.
-                - Important Note: key_length soley depends on the max_tokens count.
-                Length must be greater than max_tokens count.
-            - exclude (Union[str, Iterable]): Characters to exclude from the key generation.
-            Can be a string or an iterable of characters. Defaults to an empty string.
-            - include_all (bool): If True, include all characters from digits, ascii_letters, and punctuation.
-            Defaults to False.
-            - repeat (int): The number of iterations for character cycling. Defaults to None.
+    #### Returns:
+        - str: The generated cryptographic key.
+        
+    #### Raises:
+        - CipherException:
+            - If conflicting exclude and include_all arguments are specified
+            - If exclude is not of type Iterable
+            - If key_length is less than default value (32)
             
-        #### Returns:
-            - str: The generated cryptographic key.
-            
-        #### Raises:
-            - CipherException:
-                - If conflicting exclude and include_all arguments are specified
-                - If exclude is not of type Iterable
-                - If key_length is less than default value (32)
-                
-        #### Note:
-            - The default key includes digits and ascii_letters only.
-        """
+    #### Note:
+        - The default key includes digits and ascii_letters only.
+    """
     return _BaseEngine._generate_key(**kwargs)
 
 def quick_ciphertext(**kwargs):
     """
-    #### Quickly encrypts text data and exports necessary information.
+    ### Quickly encrypts text data and exports necessary information.
     
     #### Parameters:
         - text: Any: The text to be encrypted.
@@ -1348,13 +1353,14 @@ def quick_ciphertext(**kwargs):
 
 def quick_deciphertext(**kwargs):
     """
-    #### Quickly decrypts text data using provided details.
-
+    ### Quickly decrypts text data using provided details.
+    
     #### Parameters:
         - encrypted_tuple: NamedTuple: The NamedTuple class generated from the quick encryption process.
         - text: Any: The encrypted text to be decrypted.
         - decipher_key: Any: The decryption passphrase or key.
         - hash_value: Any | None: The hash value of the original data.
+        - verbose: bool | None: Flag indicating whether to print verbose messages (default: False).
     
     #### Returns:
         - str: Decrypted text.
@@ -1368,7 +1374,7 @@ def quick_deciphertext(**kwargs):
 
 def encrypt_text(**kwargs) -> NamedTuple:
     """
-    #### Encrypts a specified text and exports necessary information.
+    ### Encrypts a specified text and exports necessary information.
     
     #### Parameters:
         - text: str: The text to be encrypted.
@@ -1376,6 +1382,7 @@ def encrypt_text(**kwargs) -> NamedTuple:
         - passkey: str | int | None: The passphrase or key for encryption (default: None).
         - export_passkey: bool: Flag indicating whether to export the passphrase to a separate file (default: True).
         - export_path: Any | None: The path to export the output file (default: None).
+        - verbose: bool | None: Flag indicating whether to print verbose messages (default: False).
     
     #### Returns:
         - NamedTuple: Tuple containing information about the encryption process.
@@ -1389,7 +1396,8 @@ def encrypt_text(**kwargs) -> NamedTuple:
 
 def decrypt_text(**kwargs) -> str:
     """
-    #### Decrypts a specified text using encryption details from the provided configuration file.
+    ### Decrypts a specified file using encryption details stored in the provided configuration file \
+        generated during the encryption process.
     
     ### Parameters:
         - passkey_file: str | Path: The path to the file containing the encryption details.
@@ -1408,7 +1416,7 @@ def decrypt_text(**kwargs) -> str:
 
 def encrypt_file(**kwargs) -> NamedTuple:
     """
-    #### Encrypts a specified file and exports necessary information.
+    ### Encrypts a specified file and exports necessary information.
     
     #### Parameters:
         - file: str | Path: The path to the file to be encrypted.
@@ -1436,7 +1444,7 @@ def encrypt_file(**kwargs) -> NamedTuple:
 
 def decrypt_file(**kwargs) -> str:
     """
-    #### Decrypts a specified file using encryption details stored in the provided configuration file \
+    ### Decrypts a specified file using encryption details stored in the provided configuration file \
     generated during the encryption process.
     
     #### Parameters:
