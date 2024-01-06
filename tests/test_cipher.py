@@ -3,15 +3,9 @@ import pytest
 from pathlib import Path
 
 sys.path.extend([(Path(__file__).resolve().parents[1] / 'src').as_posix()])
-from cipher_engine import encrypt_file, decrypt_file, encrypt_text, decrypt_text, quick_ciphertext, quick_deciphertext, encryption_header #type: ignore
+from cipher_engine import *
 
 main = Path(__file__).parents[1] / 'tests'
-
-def validate_tuple(__tuple):
-    #XXX Ensure that all attributes in the resulting encrypted tuple are non-empty
-    ls = lambda _x: len(str(_x)) > 0
-    return all(ls(getattr(__tuple, attr)) 
-            for attr in __tuple._fields)
 
 def validate_file_exists(__file):
     return __file.is_file()
@@ -19,15 +13,15 @@ def validate_file_exists(__file):
 def validate_encryption(__file):
     with open(__file, mode='rb') as file:
         bytes_text = file.read()
-        return bytes_text.startswith(encryption_header())
+        return bytes_text.startswith(CipherEngine.encryption_header())
 
 
 @pytest.fixture(params=[(
                     'plaintext', # Text to be encrypted/decrypted
-                    'password123', # Passkey used for encryption/decryption
-                    Path('test_ciphertexts.ini'), # File name for exporting encryption details
+                    'password123', # Custom passkey used for encryption/decryption
+                    Path('test_ciphertexts_passkey.ini'), # Custom file name for exporting encryption details
                     Path(__file__).resolve().parents[1] / 'tests', # Custom path for testing
-                    Path('test_ciphertexts'), # File name for exporting decryption details
+                    Path('test_ciphertexts_passkey'), # File name for exporting decryption details
                     int(1e5) # Number of iterations
                 )])
 def test_text_params(request):
@@ -69,7 +63,7 @@ def test_cipher_texts(test_text_params):
                             iterations=iterations,
                             export_path=export_path)
     
-    assert validate_tuple(encr_tuple)
+    assert CipherEngine._validate_ciphertuple(encr_tuple)
     
     # Ensure that the provided iterations value matches the one on file.
     assert encr_tuple.iterations == iterations
@@ -85,10 +79,10 @@ def test_cipher_texts(test_text_params):
     
     #XXX Quick Encrypt/Decrypt Texts (Same procedure)
     quick_encr_tuple = quick_ciphertext(text=text,
-                                        file_name=file_name.with_name('test_quick_ciphertexts'),
+                                        file_name=file_name.with_name('test_quick_ciphertexts_passkey'),
                                         export_path=export_path)
-    assert validate_tuple(quick_encr_tuple)
-    quick_decrypting = quick_deciphertext(encrypted_tuple=quick_encr_tuple)
+    assert CipherEngine._validate_ciphertuple(quick_encr_tuple)
+    quick_decrypting = quick_deciphertext(cipher_tuple=quick_encr_tuple)
     assert quick_decrypting.decrypted_text == quick_encr_tuple.original_text
     assert quick_decrypting.hash_value == quick_encr_tuple.hash_value
 
