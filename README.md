@@ -8,7 +8,7 @@
 
 - **Text Encryption and Decryption**: Encrypt and decrypt text data with ease.
 
-    >> **Quick-CipherText** - Quickly encrypts/decrypts text data and exports necessary information on-the-go.
+    > **Quick-CipherText** - Quickly encrypts/decrypts text data and exports necessary information on-the-go.
 
 - **Passphrase Generation**: Generate secure passphrases with customizable options.
 
@@ -72,7 +72,7 @@ The `DecipherEngine` class inherits attributes from the `CipherEngine` class.
 
 - `decrypt_file()`: Decrypts an encrypted file.
 - `decrypt_text()`: Decrypts encrypted text.
-- `quick_decrypr()`: Quickly decrypts text data and exports necessary information on-the-go.
+- `quick_decrypt()`: Quickly decrypts text data and exports necessary information on-the-go.
     > **Back-bone for quick_deciphertext**
 
 ### Example
@@ -104,7 +104,7 @@ output: Mc2nTJ2zosmNxEu6cXF99lapaEEgWxjt
 crypto_key = generate_crypto_key(include_all_chars=True)
 output: YGWm;2]-vLT*YS;My/mm5e\B[db$xfI]
 
-# Quick encryption of text data
+# Quick encryption of text data using CipherEngine
 result_quick_ciphertext = quick_ciphertext(text='Hello, World!')
 output: (NamedTuple)
 CipherTuple(algorithm_type='AES', decipher_key='546d746a556d746965555a464e6b4a5256553568563035584e466c4d62553172635735536355316e4d456f3d', encrypted_text='-----BEGIN CIPHERENGINE CRYPTOGRAPHIC ENCRYPTED KEY-----gAAAAABlnW67n3zkDLzoLzpTtpOVdrzKwXI5qNsqXOV8bFL34sYekvRwxAH4WciesqC3UPUBB8H7Gklm5GQdV12ZzElZrCEtEg==', hash_type='SHA512', hash_value='dffd6021bb2bd5b0af676290809ec3a53191dd81c7f70a4b28688a362182986f', iterations=139239, iv_value=None, original_text='Hello, World!', salt_value=None)
@@ -118,12 +118,12 @@ result_quick_deciphertext = quick_deciphertext(
 output: (NamedTuple)
 DecipherTuple(decrypted_text='Hello, World!', hash_value='dffd6021bb2bd5b0af676290809ec3a53191dd81c7f70a4b28688a362182986f')
 
-# Encrypt text using CipherEngine
+# Encrypt text using CipherEngine.encrypt_text
 result_encrypt_text = encrypt_text(text='Hello, World!', key_length=32, export_path='output')
 output: (NamedTuple)
 CipherTuple(algorithm_type=<class 'cryptography.hazmat.primitives.ciphers.algorithms.AES'>, decipher_key='4p8keHiYD5snme5DVUU8UuxKY2A9aFTc', encrypted_text='QKZrhffcL1TWS2J2fg==', hash_type=<class 'cryptography.hazmat.primitives.hashes.SHA512'>, hash_value='dffd6021bb2bd5b0af676290809ec3a53191dd81c7f70a4b28688a362182986f', iterations=139239, iv_value='bbaf9031f11a2a7ac1a8e6384d73a874', original_text='Hello, World!', salt_value='ad12ab5e72028b16a77e03a0d4f7fce0')
 
-# Decrypt text using DecipherEngine
+# Decrypt text using DecipherEngine.decrypt_text
 result_decrypt_text = decrypt_text(
     ciphertuple=result_encrypt_text,
     passkey_file='output/info.ini',
@@ -131,19 +131,18 @@ result_decrypt_text = decrypt_text(
 output: (NamedTuple)
 DecipherTuple(decrypted_text='Hello, World!', hash_value='dffd6021bb2bd5b0af676290809ec3a53191dd81c7f70a4b28688a362182986f')
 
-# Encrypt a file using CipherEngine
+# Encrypt a file using CipherEngine.encrypt_file
 result_encrypt_file = encrypt_file(
     file='test.txt',
     passkey=crypto_key,
     iterations=1000,
     export_path='output')
 output: (NamedTuple)
-CipherTuple(algorithm_type='AES', decipher_key='J]TTE~:vGzQ]E*?i;0br&!0,tY+zxSN^', encrypted_file='test.aes', hash_type='SHA512', hash_value='01e675506785122a5055d79a9e8fcb919c1b7838bd1d1209cd42ac67730d1f90', iterations=69619, iv_value='b26516ae7a074299bed53bbb92ebc34f', original_file='test.aes', salt_value='8cd661ff966f42fc8174623ff51e8bdd')
+CipherTuple(algorithm_type='AES', decipher_key='J]TTE~:vGzQ]E*?i;0br&!0,tY+zxSN^', encrypted_file='test.aes', hash_type='SHA512',hash_value='01e675506785122a5055d79a9e8fcb919c1b7838bd1d1209cd42ac67730d1f90', iterations=69619, iv_value='b26516ae7a074299bed53bbb92ebc34f', original_file='test.aes', salt_value='8cd661ff966f42fc8174623ff51e8bdd')
 
-# Decrypt a file using DecipherEngine
+# Decrypt a file using DecipherEngine.decrypt_file
 result_decrypt_file = decrypt_file(
-    passkey_file='output/test_passkey.ini',
-    overwrite_file=True)
+    passkey_file='output/test_passkey.ini')
 output: (NamedTuple)
 DecipherTuple(decrypted_file=PosixPath('test.aes'), hash_value='5c0c10f62a2798b8f4f2cbb3d677fc9330d87250d3a1b27830ab050ba21c87ab')
 ```

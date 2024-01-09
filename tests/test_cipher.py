@@ -2,7 +2,7 @@ import sys
 import pytest
 from pathlib import Path
 
-sys.path.extend([(Path(__file__).resolve().parents[1] / 'src').as_posix()])
+sys.path.extend([(Path(__file__).resolve().parents[1] / 'src/cipher_engine').as_posix()])
 from cipher_engine import *
 
 main = Path(__file__).parents[1] / 'tests'
@@ -82,7 +82,7 @@ def test_cipher_texts(test_text_params):
                                         file_name=file_name.with_name('test_quick_ciphertexts_passkey'),
                                         export_path=export_path)
     assert CipherEngine._validate_ciphertuple(quick_encr_tuple)
-    quick_decrypting = quick_deciphertext(cipher_tuple=quick_encr_tuple)
+    quick_decrypting = quick_deciphertext(ciphertuple=quick_encr_tuple)
     assert quick_decrypting.decrypted_text == quick_encr_tuple.original_text
     assert quick_decrypting.hash_value == quick_encr_tuple.hash_value
 
