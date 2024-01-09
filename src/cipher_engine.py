@@ -29,6 +29,7 @@ from dataclasses_json import dataclass_json
 from collections import OrderedDict, namedtuple
 from string import digits, punctuation, ascii_letters, whitespace
 from typing import (Any, AnyStr, Dict,
+                    List, overload, Type,
                     Iterable, NamedTuple,
                     TypeVar, Optional, Union,
                     Literal, NoReturn, FrozenSet)
@@ -43,10 +44,10 @@ warnings.filterwarnings("ignore", category=CryptographyDeprecationWarning)
 
 
 __all__ = (
-            'CipherEngine', 'DecipherEngine',
-            'encrypt_file', 'decrypt_file',
-            'encrypt_text', 'decrypt_text',
-            'quick_ciphertext', 'quick_deciphertext'
+        'CipherEngine', 'DecipherEngine',
+        'encrypt_file', 'decrypt_file',
+        'encrypt_text', 'decrypt_text',
+        'quick_ciphertext', 'quick_deciphertext'
         )
 
 B = TypeVar('B', bool, None)
@@ -89,7 +90,7 @@ def get_logger(*, name: str=__name__,
     return _logger
 
 logger = get_logger(level=logging.INFO,
-                    write_log=True)
+                    write_log=False)
 
 class CipherException(BaseException):
     def __init__(self, *args, log_method: logger=logger.critical):
@@ -113,20 +114,22 @@ class JSONify(Dict):
             })
 
 
-class _BaseSuffix(NamedTuple):
+class _BaseGeneral(NamedTuple):
     """
-    Enumeration class for common suffixes used in the CipherEngine operations.
+    ### Enumeration class for constant variables used in the CipherEngine operations.
     
-    Attributes:
-    - _AES: str: Suffix for AES encrypted files.
-    - _DEC: str: Suffix for decrypted files.
-    - _CFB: str: Suffix for Cipher Feedback (CFB) mode.
-    - _INI: str: Suffix for INI configuration files.
-    - _JSON: str: Suffix for JSON configuration files if _INI fails.
-    - _PRE_ENC: str: Prefix for encrypted files if 'overwrite' arugment is not enabled.
-    - _PRE_DEC: str: Prefix for decrypted files if 'overwrite' arugment is not enabled.
-    - _MHZ: str: Suffix for MegaHertz.
-    - _GHZ: str: Suffix for GigaHertz.
+    #### Attributes:
+        - `_AES`: str: Suffix for AES encrypted files.
+        - `_DEC`: str: Suffix for decrypted files.
+        - `_CFB`: str: Suffix for Cipher Feedback (CFB) mode.
+        - `_INI`: str: Suffix for INI configuration files.
+        - `_JSON`: str: Suffix for JSON configuration files if _INI fails or `serializer` argument is passed in.
+        - `_PRE_ENC`: str: Prefix for encrypted files if 'overwrite' arugment is not enabled.
+        - `_PRE_DEC`: str: Prefix for decrypted files if 'overwrite' arugment is not enabled.
+        - `_MHZ`: str: Suffix for MegaHertz.
+        - `_GHZ`: str: Suffix for GigaHertz.
+        - `_ALGO_DEFAULT`: class: Default cryptographic algorithm (AES).
+        - `_HASH_DEFAULT`: class: Default hash function (SHA512).
     """
     _AES = 'aes'
     _DEC = 'dec'
@@ -135,24 +138,27 @@ class _BaseSuffix(NamedTuple):
     _JSON = 'json'
     _PRE_ENC = 'encrypted'
     _PRE_DEC = 'decrypted'
-    _ALGO_TYPE = 'SHA512'
+    _HASH_TYPE = 'SHA512'
+    _ALGO_TYPE = _AES.upper()
     _MHZ = 'MHz'
     _GHZ = 'GHz'
+    _ALGO_DEFAULT = algorithms.AES
+    _HASH_DEFAULT = hashes.SHA512
 
 
 class _BasePower:
     """
-    Base class providing common attributes for power-related configurations in the CipherEngine.
+    ### Base class providing common attributes for power-related configurations in the CipherEngine.
     
-    Attributes:
-    - _POWER: None: Placeholder for power-related information.
-    - _SPEED: None: Placeholder for speed-related information.
-    - _MIN_CORES: int: Minimum number of CPU cores (default: 2).
-    - _MAX_CORES: int: Maximum number of CPU cores (default: 64).
-    - _MAX_TOKENS: int: Maximum number of tokens for cryptographic operations (default: 100,000).
-    - _MIN_CAPACITY: int: Minimum capacity for cryptographic operations (default: 10,000).
-    - _MAX_CAPACITY: int: Maximum capacity for cryptographic operations (default: 100,000,000).
-    - _Suffix: _BaseSuffix: Reference to the _BaseSuffix enumeration class.
+    #### Attributes:
+        - `_POWER`: None: Placeholder for power-related information.
+        - `_SPEED`: None: Placeholder for speed-related information.
+        - `_MIN_CORES`: int: Minimum number of CPU cores (default: 2).
+        - `_MAX_CORES`: int: Maximum number of CPU cores (default: 64).
+        - `_MAX_TOKENS`: int: Maximum number of tokens for cryptographic operations (default: 100,000).
+        - `_MIN_CAPACITY`: int: Minimum capacity for cryptographic operations (default: 10,000).
+        - `_MAX_CAPACITY`: int: Maximum capacity for cryptographic operations (default: 100,000,000).
+        - `_General`: _BaseGeneral: Reference to the _BaseGeneral enumeration class.
     """
     _POWER = None
     _SPEED = None
@@ -161,7 +167,7 @@ class _BasePower:
     _MAX_TOKENS = int(1e5)
     _MIN_CAPACITY = int(1e4)
     _MAX_CAPACITY = int(1e8)
-    _Suffix = _BaseSuffix
+    _General = _BaseGeneral
     
     def __init__(self) -> None:
         pass
@@ -174,17 +180,17 @@ class _BasePower:
         return clock_spd
     
     @property
-    def cpu_power(self):
+    def cpu_power(self) -> Union[int, Dict[int, int]]:
         cpu_power = self._POWER
         if cpu_power is None:
             cpu_power = self._get_cpu_power()
         return cpu_power
     
-    def calculate_cpu(self, **kwargs):
+    def calculate_cpu(self, **kwargs) -> Union[int, Dict[int, int]]:
         return self._get_cpu_power(**kwargs)
     
     @property
-    def get_cpu_chart(self):
+    def get_cpu_chart(self) -> Dict[int, int]:
         '''CPU _Power Chart'''
         return self._get_cpu_power(return_dict=True)
     
@@ -193,7 +199,7 @@ class _BasePower:
         Speed = namedtuple('ClockSpeed', ('speed', 'unit'))
         frequencies = psutil.cpu_freq(percpu=False)
         if frequencies:
-            mega, giga = cls._Suffix._MHZ, cls._Suffix._GHZ
+            mega, giga = cls._General._MHZ, cls._General._GHZ
             clock_speed = frequencies.max / 1000
             unit = giga if clock_speed >= 1 else mega
             return Speed(clock_speed, unit)
@@ -263,6 +269,7 @@ class _BasePower:
         
         if all((min_power, max_power)):
             max_power = False
+        
         base_power_range = np.logspace(
                             np.log10(self.min_cores),
                             np.log10(self._MIN_CAPACITY),
@@ -271,6 +278,7 @@ class _BasePower:
         cpu_counts = np.arange(self.min_cores, self.max_cores + 1)
         cpu_powers = np.multiply(base_power, cpu_counts, order='C', subok=True).astype('int64')
         cpu_chart = OrderedDict(zip(cpu_counts, cpu_powers))
+        
         if return_dict:
             return cpu_chart
         
@@ -284,17 +292,19 @@ class _BasePower:
         
         if any((min_power,
                 total_power >= self._MAX_CAPACITY,
-                self.clock_speed.unit==self._Suffix._MHZ)):
+                self.clock_speed.unit==self._General._MHZ)):
             total_power = first_or_last(cpu_chart.popitem(last=False))
         
         if max_power:
-            if self.clock_speed.unit==self._Suffix._GHZ:
+            if self.clock_speed.unit==self._General._GHZ:
                 total_power =  first_or_last(cpu_chart.popitem())
             CipherException(
-                "CAUTION: The 'max_power' parameter is designed for determining the maximum number "
-                " of iterations to be utilized in the algorithm encryption/decryption process, subject to meeting the computational prerequisites. "
-                f"\nHence, specific computational prerequisites must be fulfilled beforehand. Defaulting to {total_power}"
-                )
+                "CAUTION: The 'max_power' parameter is designed to determine the maximum number "
+                "of iterations used in the algorithm's encryption/decryption process, with consideration "
+                "for high-end computational power, specifically GigaHertz (GHz). Please ensure your system "
+                "meets the required computational prerequisites before using this option."
+                f"\nDefaulting to {total_power} iterations.",
+                log_method=logger.warning)
         
         return total_power
     
@@ -345,29 +355,28 @@ class _ConfigParser(configparser.ConfigParser):
 @dataclass(kw_only=True)
 class _BaseEngine(_BasePower):
     """
-    Base class for the CipherEngine hierarchy, providing common attributes and functionality for encryption.
+    ### Base class for the CipherEngine hierarchy, providing common attributes and functionality for encryption.
     
-    Attributes:
-    - file: Path | None: The path to the file to be processed (default: None).
-    - file_name: str | None: The name of the file containing the encryption details.
-    - text: str | None: The text data to be processed (default: None).
-    - passkey_file: Path | None: The path to the file containing the encryption details (default: None).
-    - export_path: Path | None: The path where exported files will be stored (default: None).
-    - verbose: bool: Flag indicating whether to print verbose messages (default: False).
-    - overwrite_file: bool: Flag indicating whether to overwrite the original file during processing (default: False).
-    - hash_type (str): The algorithm to be utilized for the encryption process, which will correspond to its respective Cipher algorithm by default (PBKDF2 default: SHA512).
-    - algorithm_type (str): The type of encryption algorithm to be used (default: 'AES').
+    #### Attributes:
+    - `file`: Path | None: The path to the file to be processed (default: None).
+    - `file_name`: str | None: The name of the file containing the encryption details.
+    - `text`: str | None: The text data to be processed (default: None).
+    - `passkey_file`: Path | None: The path to the file containing the encryption details (default: None).
+    - `export_path`: Path | None: The path where exported files will be stored (default: None).
+    - `verbose`: bool: Flag indicating whether to print verbose messages (default: False).
+    - `overwrite_file`: bool: Flag indicating whether to overwrite the original file during processing (default: False).
+    - `hash_type` (str): The algorithm to be utilized for the encryption process, which will correspond to its respective Cipher algorithm by default (PBKDF2 default: SHA512).
+    - `algorithm_type` (str): The type of encryption algorithm to be used (default: 'AES').
         - Note: The algorithm type must correspond to the hash type block sizes,
             or it will attempt to find the right match instead of raising an error.
-    - ciphertuple (NamedTuple): The tuple generated from any encryption process to be used for decryption.
+    - `ciphertuple` (NamedTuple): The tuple generated from any encryption process to be used for decryption.
     
-    Class Attributes:
-    - _BACKEND: cryptography.hazmat.backends.Backend: The cryptography backend used for cryptographic operations.
-    - _ALL_CHARS: str: A string containing all possible characters for passphrase generation.
-    - _MIN_KEYLENGTH: int: The minimum length for cryptographic keys (default: 32).
-    - _MIN_PBKLEN: int: The minimum length for key derivation using PBKDF2 (default: 32).
-    - _MAX_KEYLENGTH: int: The maximum length for cryptographic keys, derived from the _BasePower class.
-    
+    #### Class Attributes:
+    - `_BACKEND`: cryptography.hazmat.backends.Backend: The cryptography backend used for cryptographic operations.
+    - `_ALL_CHARS`: str: A string containing all possible characters for passphrase generation.
+    - `_MIN_KEYLENGTH`: int: The minimum length for cryptographic keys (default: 32).
+    - `_MIN_PBKLEN`: int: The minimum length for key derivation using PBKDF2 (default: 32).
+    - `_MAX_KEYLENGTH`: int: The maximum length for cryptographic keys, derived from the _BasePower class.
     """
     file: Optional[P] = field(repr=False, default=None)
     file_name: str = field(repr=False, default=None)
@@ -377,22 +386,33 @@ class _BaseEngine(_BasePower):
     export_path: Optional[P] = field(repr=False, default=None)
     verbose: Optional[B] = field(repr=False, default=False)
     overwrite_file: Optional[B] = field(repr=False, default=False)
+    kwargs: Dict = field(repr=False, default=dict)
     
-    _BACKEND = default_backend()
-    _ALL_CHARS = (digits + punctuation + ascii_letters)
-    _MIN_KEYLENGTH = 32
-    _MAX_KEYLENGTH = _BasePower._MAX_CAPACITY
-    _DEPRECATED_ALGOS = ('Blowfish', 'CAST5', 'IDEA', 'SEED')
+    _BACKEND: Any = default_backend()
+    _ALL_CHARS: str = (digits + punctuation + ascii_letters)
+    _MIN_KEYLENGTH: int = 32
+    _MAX_KEYLENGTH: int = _BasePower._MAX_CAPACITY
+    _DEPRECATED_ALGOS: tuple = ('Blowfish', 'CAST5', 'IDEA', 'SEED')
     
     @property
-    def _identifier(self):
-        return '-----BEGIN CIPHERENGINE AES ENCRYPTED KEY-----'.encode()
+    def _identifier(self) -> bytes:
+        """
+        Retrieve the dynamic identifier used in CipherEngine AES encrypted keys.
+        The identifier serves as a unique marker at the beginning of encrypted files,
+        facilitating proper recognition and validation during encryption and decryption processes.
+        The identifier format may vary based on specific encryption configurations and security measures,
+        allowing for adaptability to diverse encryption scenarios.
+        
+        #### Returns:
+            - `bytes`: The dynamic identifier string encoded as bytes.
+        """
+        return '-----BEGIN CIPHERENGINE CRYPTOGRAPHIC ENCRYPTED KEY-----'.encode()
     
     @staticmethod
-    def _new_parser():
+    def _new_parser() -> _ConfigParser:
         return _ConfigParser()
     
-    def _log_verbose(self, __msg: str, lg_method: logger=logger.info):
+    def _log_verbose(self, __msg: str, lg_method: logger=logger.info) -> None:
         if self.verbose:
             CipherException(__msg, log_method=lg_method)
     
@@ -458,38 +478,36 @@ class _BaseEngine(_BasePower):
     @staticmethod
     def _template_parameters() -> FrozenSet:
         return frozenset(
-                {'iterations', 'hash_value', 'salt_value',
-                'hash_type', 'algorithm_type',
+                {'iterations', 'hash_value',
+                'salt_value', 'hash_type', 'algorithm_type',
                 'iv_value', 'encrypted_text', 'encrypted_file',
                 'decipher_key', 'original_text', 'original_file'}
         )
     
     def _new_template(self, **kwargs) -> Dict:
-        '''
+        """
         #### \
         This method creates a dynamic template incorporating encryption parameters and security details \
         suitable for writing encrypted data to a file. \
         The generated template can later be employed in the decryption process.
-        '''
+        """
+        #XXX CIPHER_INFO
+        org_str = 'original_{}'.format('file' if 'encrypted_file' in kwargs else 'text')
+        org_data = kwargs.pop(org_str)
+        encr_str = 'encrypted_{}'.format('file' if 'encrypted_file' in kwargs else 'text')
+        encr_data = kwargs.pop(encr_str)
+        decipher_key = kwargs.pop(decipher_str:=('decipher_key'))
+        
         #XXX SECURITY_PARAMS
-        hash_val = kwargs.pop(hash_str:=('hash_value'), None)
-        iterations = kwargs.pop(iter_str:=('iterations'), self.cpu_power)
         salt_val = kwargs.pop(salt_str:=('salt_value'), None)
         iv_val = kwargs.pop(iv_str:=('iv_value'), None)
-        algorithm = kwargs.pop(algo_str:=('algorithm_type'), algorithms.AES)
-        hash_type = kwargs.pop(h_str:=('hash_type'), hashes.SHA512)
-        salt_iv = {salt_str: salt_val, iv_str: iv_val} \
-                if all((salt_val, iv_val)) else {}
+        salt_iv = {salt_str: salt_val, iv_str: iv_val, **kwargs} \
+                if all((salt_val, iv_val)) else {**kwargs}
         
-        return {'CIPHER_INFO': {**kwargs},
-                'SECURITY_PARAMS':
-                    {iter_str: iterations,
-                    h_str: hash_type,
-                    algo_str: algorithm,
-                    'mode': self._Suffix._CFB,
-                    hash_str: hash_val,
-                    **salt_iv
-                    }
+        return {'CIPHER_INFO': {org_str: org_data,
+                                encr_str: encr_data,
+                                decipher_str: decipher_key},
+                'SECURITY_PARAMS': {**salt_iv}
                 }
     
     @staticmethod
@@ -515,23 +533,22 @@ class _BaseEngine(_BasePower):
                         defaults: Iterable=None,
                         values: Iterable=None,
                         num_attrs: int=5,
-                        field_doc: str='Tuple containing dependecies for decryption purposes.'
+                        field_doc: str=''
                         ) -> NamedTuple:
         """
-        Create a dynamically generated namedtuple subclass.
+        ### Create a dynamically generated namedtuple subclass.
         
-        Parameters:
-        - typename (str): Name of the named tuple subclass.
-        - field_names (List[str]): List of field names.
-        - rename (bool): Whether to rename invalid field names.
-        - module (str): Module name for the namedtuple subclass.
-        - defaults (Tuple): Default values for fields.
-        - num_attrs (int): Number of default attributes if field_names is not provided.
-        - num_attrs (int): The number of default attributes assigned to the object when no specific field names are provided.
-        - field_doc (str): List of documentation strings for each field.
+        #### Parameters:
+            - `typename` (str): Name of the named tuple subclass.
+            - `field_names` (List[str]): List of field names.
+            - `rename` (bool): Whether to rename invalid field names.
+            - `module` (str): Module name for the namedtuple subclass.
+            - `defaults` (Tuple): Default values for fields.
+            - `num_attrs` (int): The number of default attributes assigned to the object when no specific field names are provided.
+            - `field_doc` (str): List of documentation strings for each field.
         
-        Returns:
-        - Named tuple subclass.
+        #### Returns:
+            - NamedTuple subclass.
         """
         
         if not isinstance(num_attrs, int) or num_attrs <= 0:
@@ -540,7 +557,7 @@ class _BaseEngine(_BasePower):
         _field_names = field_names or np.core.defchararray.add('attr', np.arange(1, num_attrs+1).astype(str))
         default_vals = defaults or (None,) * len(_field_names)
         field_docs = field_doc or ''
-        module_name = module or 'CipherTuple'
+        module_name = module or typename
         new_tuple = namedtuple(typename=typename,
                                 field_names=_field_names,
                                 rename=rename,
@@ -550,6 +567,26 @@ class _BaseEngine(_BasePower):
         if values:
             return new_tuple(*values)
         return new_tuple
+    
+    @classmethod
+    def _ciphertuple(cls, *args, type_file=False):
+        '''
+        #### ('algorithm_type', 'decipher_key',
+        #### 'encrypted_file', 'hash_type', 'hash_value',
+        #### 'iterations', 'iv_value', 'original_file',
+        #### 'salt_value')
+        '''
+        parameters = cls._template_parameters()
+        specific_params = (k for k in parameters
+                        if (type_file and not k.endswith('text'))
+                        or (not type_file and not k.endswith('file')))
+        ordered_params = sorted(specific_params)
+        args = [None]*len(ordered_params) if not args else args
+        return cls._create_subclass('CipherTuple',
+                                    field_names=ordered_params,
+                                    values=args,
+                                    field_doc='Primary NamedTuple \
+                                            for encryption/decryption purposes.')
     
     @staticmethod
     def _validate_file(__file: P) -> Path:
@@ -575,19 +612,19 @@ class _BaseEngine(_BasePower):
     @classmethod
     def _filter_chars(cls, __string: str, *, exclude: str='') -> str:
         """
-        Filter characters in the given string, excluding those specified.
+        ### Filter characters in the given string, excluding those specified.
         
-        Parameters:
-        - __string (str): The input string to be filtered.
-        - exclude (str): Characters to be excluded from the filtering process.
+        #### Parameters:
+            - `__string` (str): The input string to be filtered.
+            - `exclude` (str): Characters to be excluded from the filtering process.
         
-        Returns:
-        - str: The filtered string with specified characters excluded.
+        #### Returns:
+            - str: The filtered string with specified characters excluded.
         
-        Notes:
-        - This method employs the `translate` method to efficiently filter characters.
-        - Whitespace, form feed (\f), and vertical tab (\v) are automatically excluded.
-        - To exclude additional characters, provide them as a string in the `exclude` parameter.
+        #### Notes:
+            - This method employs the `translate` method to efficiently filter characters.
+            - Whitespace, form feed (\f), and vertical tab (\v) are automatically excluded.
+            - To exclude additional characters, provide them as a string in the `exclude` parameter.
         
         """
         check_str = cls._validate_object(__string, type_is=str)
@@ -599,15 +636,15 @@ class _BaseEngine(_BasePower):
     @staticmethod
     def _find_mem_loc(__obj: object) -> str:
         """
-        Returns the memory location of the given object in hexadecimal format.
+        ### Returns the memory location of the given object in hexadecimal format.
 
-        Args:
-        __obj (object): The object whose memory location is to be found.
-
-        Returns:
-        str: The memory location of the object as a hexadecimal string.
-
-        Example:
+        #### Args:
+            - `__obj` (object): The object whose memory location is to be found.
+        
+        #### Returns:
+            - str: The memory location of the object as a hexadecimal string.
+        
+        #### Example:
         >>> _find_mem_loc("hello")
         '0x7f8f3c0a5f70'
         """
@@ -694,7 +731,8 @@ class _BaseEngine(_BasePower):
         return hash_.hexdigest()
     
     @staticmethod
-    def _validate_object(__obj: Any, type_is: type=int, arg: str='Argument') -> (int | str | list[str] | Path | Literal[False]):
+    def _validate_object(__obj: Any, type_is: type=int, arg: str='Argument') -> \
+                        (int | str | list[str] | Path | Literal[False] | NoReturn):
         """
         Validate and coerce the input object to the specified type.
         
@@ -710,7 +748,7 @@ class _BaseEngine(_BasePower):
         - CipherException: If validation or coercion fails.
         
         """
-        CEerror = CipherException
+        
         possible_instances = (TypeError, ValueError, SyntaxError)
         
         if type_is is Any:
@@ -720,24 +758,32 @@ class _BaseEngine(_BasePower):
             try:
                 _obj = int(ast.literal_eval(str(__obj)))
             except possible_instances:
-                raise CEerror(f'{arg!r} must be of type {int} or integer-like {str}')
+                raise CipherException(
+                    f'{arg!r} must be of type {int} or integer-like {str}'
+                    )
         elif type_is is str:
             try:
                 _obj = str(__obj)
             except possible_instances:
-                raise CEerror(f'{arg!r} must be of type {str}')
+                raise CipherException(
+                    f'{arg!r} must be of type {str}'
+                    )
         elif type_is is list:
             try:
                 _obj = list(map(str, __obj))
             except possible_instances:
-                raise CEerror(f'{arg!r} must be of type {list} with {int} or integer-like {str}')
+                raise CipherException(
+                    f'{arg!r} must be of type {list} with {int} or integer-like {str}'
+                    )
         elif type_is is Path:
             try:
                 _obj = Path(__obj)
             except possible_instances:
-                raise  CEerror(f'{arg!r} must be of type {Path} or {str}')
+                raise  CipherException(
+                    f'{arg!r} must be of type {Path} or {str}'
+                    )
         else:
-            return False
+            raise CipherException(f'{__obj} is not a valid type.')
         
         return _obj
     
@@ -804,7 +850,7 @@ class _BaseEngine(_BasePower):
     def _parse_config(cls, __config: P, *, section: str='SECURITY_PARAMS', section_key: str) -> Union[str, Any]:
         file_suffix = __config.suffix.lstrip('.')
         try:
-            if file_suffix==cls._Suffix._JSON:
+            if file_suffix==cls._General._JSON:
                 cparser = json.loads(open(__config).read())
             else:
                 cparser = cls._new_parser()
@@ -907,8 +953,8 @@ class _BaseEngine(_BasePower):
                         mode=modes.CFB8(__iv),
                         backend=cls._BACKEND)
         
-        default_atype = algorithms.AES
-        default_htype = hashes.SHA384
+        default_atype = cls._General._ALGO_DEFAULT
+        default_htype = cls._General._HASH_DEFAULT
         
         #XXX Check if specified hash and algorithm types are valid based on given key
         try:
@@ -947,7 +993,7 @@ class _BaseEngine(_BasePower):
             __salt = cls._gen_random()
         
         if not hash_type:
-            default_htype = hashes.SHA512
+            default_htype = cls._General._HASH_DEFAULT
         else:
             hash_t = hash_type.__name__ if hasattr(hash_type, '__name__') else hash_type
             default_htype = cls._validate_algorithm_type(hashes, hash_t)
@@ -1010,7 +1056,6 @@ class _BaseEngine(_BasePower):
         expected structure for cipher details.
         """
         all_parameters = cls._template_parameters()
-        
         #** isinstance(__obj, NamedTuple)?
         if all((isinstance(__ctuple, tuple),
                 hasattr(__ctuple, '_fields'),
@@ -1044,20 +1089,18 @@ class _BaseEngine(_BasePower):
         
         return __ctuple
     
-    @staticmethod
-    def _create_backup(__file: P) -> None:
-        CEinfo = partial(CipherException, log_method=logger.info)
+    def _create_backup(self, __file: P) -> None:
         backup_path = __file.parent / f'backup/{__file.name}'
         formatted_bkp = _BaseEngine._format_file(backup_path)
         if not backup_path.parent.is_dir():
-            CEinfo(
+            self._log_verbose(
                 'No backup folder detected. '
                 f'Creating a backup folder named {backup_path.parent!r} to store original files securely.'
                 )
             backup_path.parent.mkdir()
         
         if not backup_path.is_file():
-            CEinfo(
+            self._log_verbose(
             f'Backing up {backup_path.name} to the newly-created backup folder.',
             )
             shutil.copy2(__file, formatted_bkp)
@@ -1070,14 +1113,14 @@ class _BaseEngine(_BasePower):
         CipherException(log_separator,
                         log_method=logger.debug)
     
-    @staticmethod
-    def _write2file(__file: P,
+    @classmethod
+    def _write2file(cls,
+                    __file: P,
                     *,
                     suffix: bool='ini', data:AnyStr='',
                     mode: str='w', parser: configparser=None,
-                    reason: str='', verbose: bool=False) -> None:
+                    reason: str='') -> None:
         
-        CEinfo = partial(CipherException, log_method=logger.info)
         new_file = Path(__file).with_suffix(f'.{suffix}')
         with open(new_file, mode=mode) as _file:
             if parser:
@@ -1086,9 +1129,8 @@ class _BaseEngine(_BasePower):
                 _file.write(data)
             p_string = partial('{file!r} has successfully been {reason} to {path!r}'.format,
                             file=_file.name, path=new_file.absolute())
-            if verbose:
-                CEinfo(p_string(reason=reason or 'written'))
-        return 
+            cls._log_verbose(cls, p_string(reason=reason or 'written'))
+        return
     
     @classmethod
     def _compiler(cls, __defaults, __k, escape_k=True, search=True) -> str:
@@ -1153,7 +1195,8 @@ class CipherEngine(_BaseEngine):
     """
     __slots__ = ('__weakrefs__', '_iterations',
                 'file', '_file', 'text', 'passkey_file',
-                'export_path', 'verbose', 'overwrite_file')
+                'export_path', 'verbose', 'overwrite_file',
+                'kwargs')
     
     passkey: Optional[Union[str, int]] = field(init=True, repr=False, default=None)
     key_length: Optional[I] = field(repr=True, default=_BaseEngine._MIN_KEYLENGTH)
@@ -1215,8 +1258,8 @@ class CipherEngine(_BaseEngine):
         return cls()._identifier
     
     def _validate_hash_algo(self):
-        default_htype =  hashes.SHA512
-        default_atype = algorithms.AES
+        default_htype =  self._General._HASH_DEFAULT
+        default_atype = self._General._ALGO_DEFAULT
         if self.hash_type:
             default_htype = self._validate_algorithm_type(hashes, self.hash_type)
         
@@ -1292,10 +1335,9 @@ class CipherEngine(_BaseEngine):
         return self._generate_key(**kwargs)
     
     def _export_passkey(self, *, parser, passkey_file, data) -> None:
-        passkey_suffix = self._Suffix._INI
+        passkey_suffix = self._General._INI
         write_func = partial(self._write2file,
                             passkey_file,
-                            verbose=self.verbose,
                             reason='exported')
         write2file = partial(write_func,
                             suffix=passkey_suffix,
@@ -1303,13 +1345,14 @@ class CipherEngine(_BaseEngine):
         
         def json_serializer():
             new_data = JSONify.convert2strings(data).to_json(indent=2, ensure_ascii=False)
-            passkey_suffix = self._Suffix._JSON
+            passkey_suffix = self._General._JSON
             write2file = partial(write_func,
                                 suffix=passkey_suffix,
                                 data=new_data)
             return write2file
         
-        if self._jserializer:
+        jserializer = self()._jserializer if not hasattr(self, '_jserializer') else self._jserializer
+        if jserializer:
             write2file = json_serializer()
         
         try:
@@ -1385,47 +1428,45 @@ class CipherEngine(_BaseEngine):
             self._create_backup(_file)
         
         new_path = _file.parent
-        default_suffix = self._Suffix._AES
+        default_suffix = self._General._AES
         
         if self.overwrite_file:
-            encr_file = (new_path / _file.stem).as_posix()
+            encr_file = (new_path / _file.stem)
             CEinfo(f'Overwriting {_file!r}...')
             os.remove(_file)
         else:
             if _file.is_file():
-                prefix = self._Suffix._PRE_ENC
+                prefix = self._General._PRE_ENC
                 _name = _file.stem.removeprefix(prefix)
                 if re.search(r'\.', _name):
                     _name = _file.stem.split('.')[0]
-                encr_file = (_file.parent / f'{prefix}_{_name}').as_posix()
-        
+                encr_file = (_file.parent / f'{prefix}_{_name}')
         
         encr_file = Path(encr_file).with_suffix(f'.{default_suffix}')
         encryption_data = (self._identifier + salt_val + iv_val + encrypted)
         self._write2file(encr_file,
                         suffix=default_suffix, mode='wb',
-                        data=encryption_data, reason='exported',
-                        verbose=self.verbose)
+                        data=encryption_data, reason='exported')
         
         cparser = self._new_parser()
         passkey_name = self.file_name or Path(f'{encr_file.stem}_passkey')
         passkey_file = new_path / passkey_name
-        passkey_tuple = self._create_subclass('Encrypter',
-                                            ('original_file',
-                                            'encrypted_file',
-                                            'decipher_key', 'hash_value'),
-                                            values=(_file.as_posix(),
-                                                    encr_file.as_posix(),
-                                                    self._passkey, hash_val)
-                                            )
-        encr_data = self._new_template(**passkey_tuple._asdict())
-        self._export_passkey(parser=cparser,
-                            passkey_file=passkey_file,
-                            data=encr_data)
+        ciphertuple = self._ciphertuple(self._algorithm_type.__name__,
+                                        self._passkey, encr_file.as_posix(),
+                                        self._hash_type.__name__, hash_val,
+                                        self._iterations, iv_val.hex(),
+                                        _file.as_posix(), salt_val.hex(),
+                                        type_file=True)
+        encr_data = self._new_template(**ciphertuple._asdict())
+        if self.export_passkey:
+            self._export_passkey(parser=cparser,
+                                passkey_file=passkey_file,
+                                data=encr_data)
+        
         CEinfo(f'{cls_name} encryption algorithm is now finished without encountering any errors for {_file}. '
                 f'Kindly utilize the cipher key stored in {passkey_file} to decrypt at anytime.')
         self._print_header(cls_name, activated=False, with_iterations=False)
-        return passkey_tuple
+        return ciphertuple
     
     def encrypt_text(self) -> NamedTuple:
         self._log_separator('encrypting-text')
@@ -1434,57 +1475,68 @@ class CipherEngine(_BaseEngine):
         
         org_text = self._validate_object(self.text, type_is=str)
         hashed_text = self._calc_str_hash(org_text)
-        _kdf = self._get_pbk(iterations=self._iterations,
+        kdf = self._get_pbk(iterations=self._iterations,
                             hash_type=self._hash_type)
-        salt = _kdf._salt
-        passkey = _kdf.derive(self._passkey.encode())
-        _iv = self._gen_random()
-        fernet = self._get_cipher(passkey, _iv, hash_type=self._hash_type, algorithm_type=self._algorithm_type)
+        salt = kdf._salt
+        passkey = kdf.derive(self._passkey.encode())
+        iv_val = self._gen_random()
+        fernet = self._get_cipher(passkey, iv_val, hash_type=self._hash_type, algorithm_type=self._algorithm_type)
         encryptor = fernet.encryptor()
         cipher_text = encryptor.update(org_text.encode()) + encryptor.finalize()
         _base64 = lambda _x: self._base64_key(_x).decode()
-        encrypted_data = self._create_subclass(
-                            self.__class__.__name__,
-                            field_names=('original_text', 'encrypted_text',
-                                        'decipher_key', 'hash_value', 'iterations',
-                                        'salt_value', 'iv_value', 'hash_type', 'algorithm_type'),
-                            values=(org_text, _base64(cipher_text),
-                                    self._passkey, hashed_text,
-                                    self._iterations, salt.hex(),
-                                    _iv.hex(), self._hash_type, self._algorithm_type)
-                            )
+        
+        ciphertuple = self._ciphertuple(self._algorithm_type, self._passkey,
+                                        _base64(cipher_text), self._hash_type,
+                                        hashed_text, self._iterations, iv_val.hex(),
+                                        org_text, salt.hex())
         
         if self.export_passkey:
             passkey_file = self.file_name or 'ciphertext_passkey'
             if self.export_path:
                 passkey_file = Path(self.export_path) / passkey_file
             cparser = self._new_parser()
-            _encrypted_data = self._new_template(**encrypted_data._asdict())
+            ctuple_data = self._new_template(**ciphertuple._asdict())
             self._export_passkey(parser=cparser,
                                 passkey_file=passkey_file,
-                                data=_encrypted_data)
+                                data=ctuple_data)
         
         print_header(with_iterations=False, activated=False)
-        return encrypted_data
+        return ciphertuple
     
     @classmethod
     def quick_encrypt(cls,
                         *,
                         text: str,
-                        file_name: str=None,
-                        export_path: str=None
-                        ) -> NamedTuple:
+                        file_name: P='quick_ciphertext_passkey',
+                        export_passkey: bool=True,
+                        export_path: P=None,) -> NamedTuple:
+        
         cls._log_separator('quick-encrypting-text')
-        print_header = partial(cls._print_header, cls, 'Quick-CipherText')
+        print_header = partial(cls._print_header, cls,
+                                'Quick-CipherText')
         print_header()
-        file = file_name or 'quick_ciphertext_passkey'
-        encrypted_text = cls(text=text,
-                            file_name=file,
-                            min_power=True,
-                            export_passkey=True,
-                            export_path=export_path).encrypt_text()
+        hash_val = cls._calc_str_hash(text)
+        passkey = cls._base64_key(cls._generate_key(key_length=32).encode())
+        fernet = cls._new_fernet(passkey)
+        encrypted_text = fernet.encrypt(text.encode())
+        ciphertuple = cls._ciphertuple(cls._General._ALGO_TYPE, passkey.hex(),
+                                        encrypted_text.hex(), cls._General._HASH_TYPE,
+                                        hash_val, cls().cpu_power,
+                                        None, text, None)
+        if export_passkey:
+            _file = Path(file_name)
+            cparser = cls._new_parser()
+            ctuple_data = cls._new_template(cls,
+                                                **ciphertuple._asdict()
+                                                )
+            if export_path:
+                _file = Path(export_path) / _file
+            cls._export_passkey(cls,
+                                parser=cparser,
+                                passkey_file=_file,
+                                data=ctuple_data)
         print_header(with_iterations=False, activated=False)
-        return encrypted_text
+        return ciphertuple
 
 
 @dataclass(kw_only=True)
@@ -1500,23 +1552,25 @@ class DecipherEngine(_BaseEngine):
         super().__init__(passkey_file=self.passkey_file,
                         verbose=self.verbose,
                         overwrite_file=self.overwrite_file,
-                        ciphertuple=self.ciphertuple)
+                        ciphertuple=self.ciphertuple,
+                        kwargs=self.kwargs)
         self._get_dependencies()
     
     def _get_dependencies(self):
         """
         Internal method to fetch and parse necessary dependencies for the decryption process.
         """
+        
         #** For configuration files (.INI | .JSON)
         if self.passkey_file:
             self._passkey_file = self._validate_file(self.passkey_file)
             cparser_func = partial(self._parse_config, self._passkey_file)
             self._iterations = int(ast.literal_eval(cparser_func(section_key='iterations')))
-            self._hash_val = cparser_func(section_key='hash_value')
+            self._hash_value = cparser_func(section_key='hash_value')
             self._hash_type = cparser_func(section_key='hash_type').split('.')[-1].rstrip(">'")
             self._algorithm_type = cparser_func(section_key='algorithm_type').split('.')[-1].rstrip(">'")
-            self._salt_val = cparser_func(section_key='salt_value')
-            self._iv_val = cparser_func(section_key='iv_value')
+            self._salt_value = cparser_func(section_key='salt_value')
+            self._iv_value = cparser_func(section_key='iv_value')
             sec_getter = lambda _sec_key: cparser_func(section='CIPHER_INFO', section_key=_sec_key)
             self._encrypted_text = sec_getter('encrypted_text')
             self._encrypted_file = sec_getter('encrypted_file')
@@ -1526,7 +1580,7 @@ class DecipherEngine(_BaseEngine):
         if self.ciphertuple:
             self._ciphertuple = self._validate_ciphertuple(self.ciphertuple)
     
-    def decrypt_file(self) -> None | NoReturn:
+    def decrypt_file(self) -> NamedTuple | NoReturn:
         self._log_separator('decrypting-file')
         
         config_path = self._passkey_file
@@ -1534,13 +1588,13 @@ class DecipherEngine(_BaseEngine):
         print_header = partial(
                         self._print_header,
                         cls_name,
-                        with_iterations=False,
+                        with_iterations=True,
                         encrypting=False
                         )
         print_header(activated=True)
         
         CEerror = self._log_verbose
-        _suffix = self._Suffix._DEC
+        _suffix = self._General._DEC
         CEerror(f'{cls_name} decryption algorithm has begun. Gathering prerequisites...')
         
         CEerror(f"Deriving security dependencies values from specified ({config_path!r}) configuration file.")
@@ -1591,7 +1645,7 @@ class DecipherEngine(_BaseEngine):
                 os.remove(_file)
             else:
                 if _file.is_file():
-                    prefix = self._Suffix._PRE_DEC
+                    prefix = self._General._PRE_DEC
                     _name = _file.stem.removeprefix(prefix)
                     if re.search(r'\.', _name):
                         _name = _file.stem.split('.')[0]
@@ -1600,18 +1654,18 @@ class DecipherEngine(_BaseEngine):
             decrypted_file = Path(decrypted_file)
             self._write2file(decrypted_file,
                             suffix=_suffix, mode='wb',
-                            data=c_decrypted, reason='decrypted',
-                            verbose=self.verbose)
+                            data=c_decrypted, reason='decrypted')
             
             CEerror('Verifying the hash value against the decrypted file for validation.')
-            check_decrypted = self._calc_file_hash(decrypted_file.with_suffix('.'+_suffix))
-            if (check_decrypted != hashed_value):
-                self._failed_hash(hashed_value, check_decrypted)
+            decrypted_hash = self._calc_file_hash(decrypted_file.with_suffix('.'+_suffix))
+            if (hashed_value != decrypted_hash):
+                self._failed_hash(hashed_value, decrypted_hash)
             
             CEerror('The matching hashed values affirm that no data loss occurred during the decryption process.')
             CEerror(f'{cls_name} decryption algorithm is now finished without encountering any errors for {_file}.')
             print_header(activated=False, with_iterations=False)
-            return
+            decr_tuple = self._get_subclass()
+            return decr_tuple(decrypted_file, decrypted_hash)
         else:
             raise CipherException(
                 f'The file {_file!r} lacks the required identifier. '
@@ -1644,12 +1698,13 @@ class DecipherEngine(_BaseEngine):
             decipher_key = self._ciphertuple.decipher_key
             hash_type = self._ciphertuple.hash_type
             algorithm_type = self._ciphertuple.algorithm_type
-        elif self.passkey_file:
-            salt = self._salt_val
-            iv = self._iv_val
+        
+        if self.passkey_file:
+            salt = self._salt_value
+            iv = self._iv_value
             iterations = self._iterations
             encrypted_text = self._encrypted_text
-            hash_val = self._hash_val
+            hash_val = self._hash_value
             decipher_key = self._decipher_key
             hash_type = self._hash_type
             algorithm_type = self._algorithm_type
@@ -1669,36 +1724,58 @@ class DecipherEngine(_BaseEngine):
         return decr_tuple(decrypted_text.decode(), decrypted_hash)
     
     @classmethod
-    def quick_decrypt(cls, ciphertuple: NamedTuple=None) -> str:
-        print_header = partial(cls._print_header, cls,
-                        'Quick-DecipherText',
+    def quick_decrypt(cls,
+                        *,
+                        text: str=None,
+                        decipher_key: str=None,
+                        hash_value: str=None,
+                        ciphertuple: NamedTuple=None) -> str:
+
+        print_header = partial(
+                        cls._print_header,
+                        cls,
                         with_iterations=False,
                         encrypting=False
                         )
         print_header(activated=True)
-        decrypted_text = cls(ciphertuple=ciphertuple).decrypt_text()
+        if ciphertuple:
+            cls._validate_ciphertuple(ciphertuple)
+            text = ciphertuple.encrypted_text
+            decipher_key = ciphertuple.decipher_key
+            hash_value = ciphertuple.hash_value
+        else:
+            text = cls._validate_object(text, type_is=str, arg='Quick-Decrypt text')
+            decipher_key = cls._validate_object(decipher_key, type_is=str, arg='Quick-Decrypt decipher_key')
+            hash_value = cls._validate_object(hash_value, type_is=str, arg='Quick-Decrypt hash_value')
+        
+        fernet = cls._new_fernet(bytes.fromhex(decipher_key))
+        decrypted = fernet.decrypt(bytes.fromhex(text)).decode()
+        decrypted_hash = cls._calc_str_hash(decrypted)
+        if hash_value and (decrypted_hash != hash_value):
+            cls._failed_hash(hash_value, decrypted_hash)
         print_header(activated=False)
-        return decrypted_text
+        decr_tuple = cls._get_subclass()
+        return decr_tuple(decrypted, hash_value)
 
 
-def generate_crypto_key(**kwargs):
+def generate_crypto_key(**kwargs) -> str:
     """
     ### Generate a cryptographic key.
     
     #### Parameters:
-        - key_length (Union[int, str]): The length of the key. Defaults to 32.
+        - `key_length` (Union[int, str]): The length of the key. Defaults to 32.
             - Important Note: key_length soley depends on the max_tokens count.
             Length must be greater than max_tokens count.
-        - exclude (Union[str, Iterable]): Characters to exclude from the key generation.
+        - `exclude` (Union[str, Iterable]): Characters to exclude from the key generation. \
         Can be a string or an iterable of characters. Defaults to an empty string.
-        - include_all_chars (bool): If True, include all characters from digits, ascii_letters, and punctuation.
+        - `include_all_chars` (bool): If True, include all characters from digits, ascii_letters, and punctuation. \
         Defaults to False.
-        - repeat (int): The number of iterations for character cycling. Defaults to 64.
-        - Note: 'repeat' parameter is used for character cycling from itertools.repeat,
-        and its input is not explicitly needed as its entire purpose is to adjust the key length.
-        If the absolute difference between 'repeat' and 'key_length' is within a certain threshold (1e5),
-        the 'repeat' value will be adjusted as max(max(repeat, key_length), threshold). \n
-        >>> if abs(repeat - key_length) <= threshold (1e5)
+        - `repeat` (int): The number of iterations for character cycling. Defaults to 64. \n
+            - `Note`: 'repeat' parameter is used for character cycling from itertools.repeat, \
+            and its input is not explicitly needed as its entire purpose is to adjust the key length. \
+            If the absolute difference between 'repeat' and 'key_length' is within a certain threshold (1e5), \
+            the `repeat` value will be adjusted as max(max(`repeat`, key_length), `threshold`). \n
+        >>> if abs(repeat - key_length) <= threshold
         >>> new repeat value -> max(max(repeat, key_length), threshold)
         
     #### Returns:
@@ -1707,45 +1784,57 @@ def generate_crypto_key(**kwargs):
     #### Raises:
         - CipherException:
             - If conflicting exclude and include_all_chars arguments are specified
-            - If exclude is not of type Iterable
-            - If key_length is less than default value (32)
+            - If `key_length` is less than default value (32) unless `bypass_length_limit` is passed in.
+            - If `key_length` or `repeat` values are greater than the max capacity (1e8).
             
     #### Note:
         - The default key includes digits and ascii_letters only.
     """
     return _BaseEngine._generate_key(**kwargs)
 
-def quick_ciphertext(**kwargs):
+def quick_ciphertext(**kwargs) -> NamedTuple:
     """
-    ### Quickly encrypts text data and exports necessary information.
-    
+    ### Quickly encrypt text data using Fernet for efficient encryption with minimal setup.
+
     #### Parameters:
-        - text: Any: The text to be encrypted.
-        - file_name: str: The name of the output file containing encryption details (default: 'ciphertext_info').
-        - export_passkey: bool: Flag indicating whether to export the passphrase to a separate file (default: True).
-        - export_path: Any | None: The path to export the output file (default: None).
-        - verbose: bool: Flag indicating whether to print verbose messages (default: False).
-    
+    - `text` (str): The text data to be encrypted.
+    - `file_name` (Path, optional): The name of the passkey file to be exported (default: `quick_ciphertext_passkey`).
+    - `export_passkey` (bool, optional): Flag indicating whether to export the passkey to a separate file (default: True).
+    - `export_path` (Path, optional): The path where the passkey file will be exported (default: None).
+
     #### Returns:
-        - NamedTuple: Tuple containing information about the encryption process.
-    
+    - NamedTuple: A tuple containing information about the encryption process.
+
     #### Example:
+    ```python
     >>> result = quick_ciphertext(text='Hello, World!')
     >>> print(result.encrypted_text)
     "abcdef1234567890..."
+    ```
+    
+    #### Notes:
+        - This method provides a quick and convenient way to encrypt text using Fernet encryption, \
+        suitable for scenarios where a simpler and faster encryption process is desired.
+        
+        - If `export_passkey` is set to True, a passkey file will be generated and exported, \
+        providing the necessary information for decryption. \
+        The passkey file will have the specified `file_name` (or the default 'quick_ciphertext_passkey') \
+        and will be saved in the specified `export_path` (or the current working directory if None).
+        
+        - For more advanced encryption options, \
+        consider using the `encrypt_text` method in the CipherEngine class.
     """
     return CipherEngine.quick_encrypt(**kwargs)
 
-def quick_deciphertext(**kwargs):
+def quick_deciphertext(**kwargs) -> NamedTuple:
     """
     ### Quickly decrypts text data using provided details.
     
     #### Parameters:
-        - ciphertuple: NamedTuple: The NamedTuple class generated from the quick encryption process.
-        - text: Any | None: The encrypted text to be decrypted.
-        - decipher_key: Any | None: The decryption passphrase or key.
-        - hash_value: Any | None: The hash value of the original data.
-        - verbose: bool | None: Flag indicating whether to print verbose messages (default: False).
+    - `ciphertuple` (NamedTuple): A NamedTuple containing details generated during the quick encryption process. It includes information such as the algorithm type, passkey, encrypted text, hash type, hash value, CPU power, original text, and salt value.
+    - `text` (Any | None): The encrypted text to be decrypted. This parameter represents the ciphertext obtained from the encryption process.
+    - `decipher_key` (Any | None): The decryption passphrase or key required to decrypt the encrypted text. It is crucial for the successful decryption of the provided ciphertext.
+    - `hash_value` (Any | None): The hash value of the original data. This value is used for integrity checking during the decryption process. It ensures that the decrypted text matches the original data, providing data integrity verification.
     
     #### Returns:
         - str: Decrypted text.
@@ -1762,16 +1851,16 @@ def encrypt_text(**kwargs) -> NamedTuple:
     ### Encrypts a specified text and exports necessary information.
     
     #### Parameters:
-        - text: str: The text to be encrypted.
-        - key_length: int | None: The length of the cryptographic key (default: 32).
-        - passkey_file: str: The name of the output file containing encryption details (default: 'info').
-        - passkey: str | int | None: The passphrase or key for encryption (default: None).
-        - iterations: int | None: The number of iterations for key derivation (default: None).
-        - exclude_chars: list | str: Characters to exclude during passphrase generation (default: '').
-        - include_all_chars: bool | None: Flag indicating whether to include all characters during passphrase generation (default: False).
-        - export_passkey: bool: Flag indicating whether to export the passphrase to a separate file (default: True).
-        - export_path: Any | None: The path to export the output file (default: None).
-        - verbose: bool | None: Flag indicating whether to print verbose messages (default: False).
+        - `text`: str: The text to be encrypted.
+        - `key_length`: int | None: The length of the cryptographic key (default: 32).
+        - `passkey_file`: str: The name of the output file containing encryption details (default: 'info').
+        - `passkey`: str | int | None: The passphrase or key for encryption (default: None).
+        - `iterations`: int | None: The number of iterations for key derivation (default: None).
+        - `exclude_chars`: list | str: Characters to exclude during passphrase generation (default: '').
+        - `include_all_chars`: bool | None: Flag indicating whether to include all characters during passphrase generation (default: False).
+        - `export_passkey`: bool: Flag indicating whether to export the passphrase to a separate file (default: True).
+        - `export_path`: Any | None: The path to export the output file (default: None).
+        - `verbose`: bool | None: Flag indicating whether to print verbose messages (default: False).
     
     #### Returns:
         - NamedTuple: Tuple containing information about the encryption process.
@@ -1789,10 +1878,10 @@ def decrypt_text(**kwargs) -> NamedTuple:
         generated during the encryption process.
     
     ### Parameters:
-        - ciphertuple (NamedTuple): The tuple generated from any encryption process to be used for decryption.
-        - passkey_file: str | Path: The path to the file containing the encryption details.
-        - export_path: str | Path: The path to export the output file (default: None).
-        - verbose: bool | None: Flag indicating whether to print verbose messages (default: False).
+        - `ciphertuple` (NamedTuple): The tuple generated from any encryption process to be used for decryption.
+        - `passkey_file`: str | Path: The path to the file containing the encryption details.
+        - `export_path`: str | Path: The path to export the output file (default: None).
+        - `verbose`: bool | None: Flag indicating whether to print verbose messages (default: False).
 
     #### Returns:
     - str: Decrypted text.
@@ -1809,18 +1898,18 @@ def encrypt_file(**kwargs) -> NamedTuple:
     ### Encrypts a specified file and exports necessary information.
     
     #### Parameters:
-        - file: str | Path: The path to the file to be encrypted.
-        - passkey: str | int | None: The passphrase or key for encryption (default: None).
-        - key_length: int | None: The length of the cryptographic key (default: 32).
-        - iterations: int | None: The number of iterations for key derivation (default: None).
-        - exclude_chars: list | str: Characters to exclude during passphrase generation (default: '').
-        - backup_file: bool | None: Flag indicating whether to create a backup of the original file (default: True).
-        - overwrite_file: bool | None: Flag indicating whether to overwrite the original file during encryption (default: False).
-        - export_passkey: bool | None: Flag indicating whether to export the passphrase to a separate file (default: True).
-        - include_all_chars: bool | None: Flag indicating whether to include all characters during passphrase generation (default: False).
-        - verbose: bool | None: Flag indicating whether to print verbose messages (default: False).
-        - min_power: bool | None: Flag indicating whether to use the minimum power for key derivation (default: False).
-        - max_power: bool | None: Flag indicating whether to use the maximum power for key derivation (default: False).
+        - `file`: str | Path: The path to the file to be encrypted.
+        - `passkey`: str | int | None: The passphrase or key for encryption (default: None).
+        - `key_length`: int | None: The length of the cryptographic key (default: 32).
+        - `iterations`: int | None: The number of iterations for key derivation (default: None).
+        - `exclude_chars`: list | str: Characters to exclude during passphrase generation (default: '').
+        - `backup_file`: bool | None: Flag indicating whether to create a backup of the original file (default: True).
+        - `overwrite_file`: bool | None: Flag indicating whether to overwrite the original file during encryption (default: False).
+        - `export_passkey`: bool | None: Flag indicating whether to export the passphrase to a separate file (default: True).
+        - `include_all_chars`: bool | None: Flag indicating whether to include all characters during passphrase generation (default: False).
+        - `verbose`: bool | None: Flag indicating whether to print verbose messages (default: False).
+        - `min_power`: bool | None: Flag indicating whether to use the minimum power for key derivation (default: False).
+        - `max_power`: bool | None: Flag indicating whether to use the maximum power for key derivation (default: False).
     
     #### Returns:
         - NamedTuple: Tuple containing information about the encryption process.
@@ -1832,15 +1921,15 @@ def encrypt_file(**kwargs) -> NamedTuple:
     """
     return CipherEngine(**kwargs).encrypt_file()
 
-def decrypt_file(**kwargs) -> str:
+def decrypt_file(**kwargs) -> NamedTuple:
     """
     ### Decrypts a specified file using encryption details stored in the provided configuration file \
     generated during the encryption process.
     
     #### Parameters:
-        - passkey_file: str | Path: The path to the file containing the encryption details.
-        - overwrite_file: bool | None: Flag indicating whether to overwrite the original file during decryption (default: False).
-        - verbose: bool | None: Flag indicating whether to print verbose messages (default: False).
+        - `passkey_file`: str | Path: The path to the file containing the encryption details.
+        - `overwrite_file`: bool | None: Flag indicating whether to overwrite the original file during decryption (default: False).
+        - `verbose`: bool | None: Flag indicating whether to print verbose messages (default: False).
     
     #### Returns:
         - str: Path to the decrypted file.
