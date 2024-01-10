@@ -4,19 +4,31 @@
 
 ## Primary Features
 
-- **File Encryption and Decryption**: Encrypt and decrypt files securely using symmetric key cryptography.
+- **File Encryption and Decryption**: Securely encrypt and decrypt files using symmetric key cryptography, incorporating advanced security measures such as PBKDF2 key derivation and unique encryption identifiers.
 
-- **Text Encryption and Decryption**: Encrypt and decrypt text data with ease.
+- **Text Encryption and Decryption**: Effortlessly encrypt and decrypt text data, ensuring confidentiality with robust cryptographic techniques.
 
-    > **Quick-CipherText** - Quickly encrypts/decrypts text data and exports necessary information on-the-go.
+    > **Quick-CipherText** - Rapidly encrypts and decrypts text data while providing essential information for seamless on-the-go operations.
 
-- **Passphrase Generation**: Generate secure passphrases with customizable options.
+- **Passphrase Generation**: Generate highly secure passphrases with customizable options to strengthen the foundation of your cryptographic keys.
 
-- **Key Derivation**: Implement key derivation functions for enhanced security.
+- **Key Derivation**: Implement advanced key derivation functions, including PBKDF2, to enhance the security of your cryptographic keys and protect against brute-force attacks.
 
-- **Backup and Restore**: Optionally create backups of original files before encryption and restore them during decryption.
+- **Backup and Restore**: Opt for optional creation of backups for original files before encryption, offering a safety net for data preservation. Efficiently restore files to their original state during the decryption process.
 
-- **Export Passphrase**: Export passphrase to a separate file for convenient storage.
+- **Export Passphrase**: Export passphrases to separate files for convenient and secure storage, ensuring that sensitive information is handled with the utmost care.
+
+## Enhanced Security Measures
+
+The CipherEngine incorporates the following advanced security measures:
+
+- **PBKDF2 (Password-Based Key Derivation Function 2)**: Strengthen cryptographic keys by making key derivation computationally intensive, thwarting potential brute-force attacks.
+
+- **Unique Encryption Identifiers**: Introduce a unique identifier during encryption to enhance security and protect against potential vulnerabilities.
+
+- **Initialization Vectors (IV) and Salts**: Enhance security further by incorporating Initialization Vectors (IV) and salts. IVs add unpredictability to the encryption process, preventing patterns in ciphertexts, while salts contribute to unique key derivation, preventing rainbow table attacks.
+
+>*The CipherEngine is designed to offer a comprehensive and secure solution for cryptographic operations, leveraging industry-standard techniques to safeguard your sensitive data.*
 
 ## CipherEngine Class
 
@@ -87,15 +99,14 @@ decipher.decrypt_file()
 ### Import Usage Examples
 
 ```python
-from cipherengine import (
-    generate_crypto_key,
-    quick_ciphertext,
-    quick_deciphertext,
-    encrypt_text,
-    decrypt_text,
-    encrypt_file,
-    decrypt_file
-)
+from cipherengine import *
+# __all__ = (
+        # 'CipherEngine', 'DecipherEngine',
+        # 'encrypt_file', 'decrypt_file',
+        # 'encrypt_text', 'decrypt_text',
+        # 'quick_ciphertext', 'quick_deciphertext',
+        # 'CipherException', 'generate_crypto_key',
+        # )
 
 # Generate a cryptographic key
 crypto_key = generate_crypto_key(key_length=32)

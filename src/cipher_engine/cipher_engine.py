@@ -1,7 +1,6 @@
 import ast
 import os
 import re
-import sys
 import math
 import json
 import ctypes
@@ -25,11 +24,9 @@ from functools import partial
 from random import SystemRandom
 from itertools import cycle, islice
 from dataclasses import dataclass, field
-from dataclasses_json import dataclass_json
 from collections import OrderedDict, namedtuple
 from string import digits, punctuation, ascii_letters, whitespace
 from typing import (Any, AnyStr, Dict,
-                    List, overload, Type,
                     Iterable, NamedTuple,
                     TypeVar, Optional, Union,
                     Literal, NoReturn, FrozenSet)
@@ -47,7 +44,8 @@ __all__ = (
         'CipherEngine', 'DecipherEngine',
         'encrypt_file', 'decrypt_file',
         'encrypt_text', 'decrypt_text',
-        'quick_ciphertext', 'quick_deciphertext'
+        'quick_ciphertext', 'quick_deciphertext',
+        'CipherException', 'generate_crypto_key',
         )
 
 B = TypeVar('B', bool, None)
@@ -97,21 +95,6 @@ class CipherException(BaseException):
         self.log_method = log_method
         super().__init__(*args)
         self.log_method(*args)
-
-
-@dataclass_json
-class JSONify(Dict):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-    
-    @classmethod
-    def convert2strings(cls, __data):
-        return JSONify(
-            **{k:
-            str(v) if not isinstance(v, dict)
-            else cls.convert2strings(v)
-            for k, v in __data.items()
-            })
 
 
 class _BaseGeneral(NamedTuple):
@@ -313,7 +296,7 @@ class _BasePower:
         raise CipherException(
             f"The specified counts surpasses the computational capacity required for {cls.__name__!r}. "
             " It is recommended to use a count of 100 <= x <= 1000, considering the specified 'key_length'. "
-            f' {(*args,)}')
+            *args)
     
     @property
     def default_cpu_count(self):
@@ -330,26 +313,6 @@ class _BasePower:
         if self.default_cpu_count < self._MIN_CORES:
             self._MIN_CORES = self.default_cpu_count
         return self._MIN_CORES
-
-
-class _ConfigParser(configparser.ConfigParser):
-    def __init__(self, *args, dict_type=dict, allow_no_value=True, **kwargs):
-        _kwargs = {
-                    'dict_type': dict_type,
-                    'allow_no_value': allow_no_value,
-                    'converters': {'*': self.convert_value},
-                    **kwargs
-                }
-        super().__init__(*args, **_kwargs)
-    
-    def get(self, section, option, *, raw=False, vars=None, fallback=None):
-        value = super().get(section, option, raw=raw, vars=vars, fallback=fallback)
-        return self.convert_value(value)
-    
-    def convert_value(self, value: Any):
-        str_val = str(value).lower()
-        val_mapper = {'true': True, 'false': False, 'none': None}
-        return val_mapper.get(str_val, value)
 
 
 @dataclass(kw_only=True)
@@ -409,8 +372,8 @@ class _BaseEngine(_BasePower):
         return '-----BEGIN CIPHERENGINE CRYPTOGRAPHIC ENCRYPTED KEY-----'.encode()
     
     @staticmethod
-    def _new_parser() -> _ConfigParser:
-        return _ConfigParser()
+    def _new_parser() -> configparser.ConfigParser:
+        return configparser.ConfigParser()
     
     def _log_verbose(self, __msg: str, lg_method: logger=logger.info) -> None:
         if self.verbose:
@@ -433,6 +396,14 @@ class _BaseEngine(_BasePower):
             f'\nOriginal Hash: {org_hash}'
             f'\nDecrypted Hash: {second_hash}'
         )
+    
+    @classmethod
+    def convert2strings(cls, __data):
+        return {k:
+                str(v) if not isinstance(v, dict)
+                else cls.convert2strings(v)
+                for k, v in __data.items()
+                }
     
     @classmethod
     def _base_power(cls):
@@ -610,6 +581,25 @@ class _BaseEngine(_BasePower):
         return shutil.get_terminal_size().columns
     
     @classmethod
+    def _replace_file(cls, __file, overwrite=False):
+        new_path = __file.parent
+        if overwrite:
+            new_file = (new_path / __file.stem)
+            CipherException(
+                f'Overwriting {__file!r}...',
+                log_method=logger.info)
+            os.remove(__file)
+        else:
+            if __file.is_file():
+                prefix = cls._General._PRE_ENC
+                _name = __file.stem.removeprefix(prefix)
+                if re.search(r'\.', _name):
+                    _name = __file.stem.split('.')[0]
+                new_file = (__file.parent / f'{prefix}_{_name}')
+                return new_file
+        return
+    
+    @classmethod
     def _filter_chars(cls, __string: str, *, exclude: str='') -> str:
         """
         ### Filter characters in the given string, excluding those specified.
@@ -697,8 +687,8 @@ class _BaseEngine(_BasePower):
                 f'\n{attr_error}'
             )
     
-    @staticmethod
-    def _calc_file_hash(__file: P) -> str:
+    @classmethod
+    def _calc_file_hash(cls, __file: P) -> str:
         """
         Calculate the SHA-256 hash of the content in the specified file.
         
@@ -708,8 +698,10 @@ class _BaseEngine(_BasePower):
         Returns:
         - str: The SHA-256 hash value as a hexadecimal string.
         """
+        file = cls._validate_file(__file)
         sha256_hash = hashlib.sha256()
         with open(__file, 'rb') as file:
+            
             for chunk in iter(lambda: file.read(4096), b""):
                 sha256_hash.update(chunk)
         return sha256_hash.hexdigest()
@@ -774,13 +766,6 @@ class _BaseEngine(_BasePower):
             except possible_instances:
                 raise CipherException(
                     f'{arg!r} must be of type {list} with {int} or integer-like {str}'
-                    )
-        elif type_is is Path:
-            try:
-                _obj = Path(__obj)
-            except possible_instances:
-                raise  CipherException(
-                    f'{arg!r} must be of type {Path} or {str}'
                     )
         else:
             raise CipherException(f'{__obj} is not a valid type.')
@@ -1239,6 +1224,10 @@ class CipherEngine(_BaseEngine):
                                 include_all_chars=self.include_all_chars
                                 )
     
+    @classmethod
+    def encryption_header(cls):
+        return cls()._identifier
+    
     def _json_serializer(self):
         serializer = self._validate_object(
                             self.serializer, type_is=str, arg='Serializer'
@@ -1252,10 +1241,6 @@ class CipherEngine(_BaseEngine):
         passphrase = self._validate_passkey(gui_pass)
         root.destroy()
         return passphrase
-        
-    @classmethod
-    def encryption_header(cls):
-        return cls()._identifier
     
     def _validate_hash_algo(self):
         default_htype =  self._General._HASH_DEFAULT
@@ -1344,7 +1329,8 @@ class CipherEngine(_BaseEngine):
                             parser=parser)
         
         def json_serializer():
-            new_data = JSONify.convert2strings(data).to_json(indent=2, ensure_ascii=False)
+            data = self.convert2strings(data)
+            new_data = json.dumps(data, indent=2, ensure_ascii=False)
             passkey_suffix = self._General._JSON
             write2file = partial(write_func,
                                 suffix=passkey_suffix,
@@ -1427,11 +1413,10 @@ class CipherEngine(_BaseEngine):
         if self.backup_file or self.overwrite_file:
             self._create_backup(_file)
         
-        new_path = _file.parent
         default_suffix = self._General._AES
         
         if self.overwrite_file:
-            encr_file = (new_path / _file.stem)
+            encr_file = (_file.parent / _file.stem)
             CEinfo(f'Overwriting {_file!r}...')
             os.remove(_file)
         else:
@@ -1450,7 +1435,7 @@ class CipherEngine(_BaseEngine):
         
         cparser = self._new_parser()
         passkey_name = self.file_name or Path(f'{encr_file.stem}_passkey')
-        passkey_file = new_path / passkey_name
+        passkey_file = _file.parent / passkey_name
         ciphertuple = self._ciphertuple(self._algorithm_type.__name__,
                                         self._passkey, encr_file.as_posix(),
                                         self._hash_type.__name__, hash_val,
@@ -1482,12 +1467,11 @@ class CipherEngine(_BaseEngine):
         iv_val = self._gen_random()
         fernet = self._get_cipher(passkey, iv_val, hash_type=self._hash_type, algorithm_type=self._algorithm_type)
         encryptor = fernet.encryptor()
-        cipher_text = encryptor.update(org_text.encode()) + encryptor.finalize()
-        _base64 = lambda _x: self._base64_key(_x).decode()
-        
+        cipher_text = self._identifier + encryptor.update(org_text.encode()) + encryptor.finalize()
         ciphertuple = self._ciphertuple(self._algorithm_type, self._passkey,
-                                        _base64(cipher_text), self._hash_type,
-                                        hashed_text, self._iterations, iv_val.hex(),
+                                        self._base64_key(cipher_text).decode(),
+                                        self._hash_type, hashed_text,
+                                        self._iterations, iv_val.hex(),
                                         org_text, salt.hex())
         
         if self.export_passkey:
@@ -1506,29 +1490,32 @@ class CipherEngine(_BaseEngine):
     @classmethod
     def quick_encrypt(cls,
                         *,
-                        text: str,
+                        text: str=None,
                         file_name: P='quick_ciphertext_passkey',
-                        export_passkey: bool=True,
-                        export_path: P=None,) -> NamedTuple:
+                        export_passkey: bool=False,
+                        export_path: P=None) -> NamedTuple:
         
         cls._log_separator('quick-encrypting-text')
         print_header = partial(cls._print_header, cls,
                                 'Quick-CipherText')
         print_header()
-        hash_val = cls._calc_str_hash(text)
+        org_text = cls._validate_object(text, type_is=str, arg='Quick-Encrypt Text')
+        hash_val = cls._calc_str_hash(org_text)
         passkey = cls._base64_key(cls._generate_key(key_length=32).encode())
         fernet = cls._new_fernet(passkey)
-        encrypted_text = fernet.encrypt(text.encode())
+        encrypted_text = cls()._identifier + fernet.encrypt(text.encode())
+        
         ciphertuple = cls._ciphertuple(cls._General._ALGO_TYPE, passkey.hex(),
-                                        encrypted_text.hex(), cls._General._HASH_TYPE,
+                                        encrypted_text.decode(), cls._General._HASH_TYPE,
                                         hash_val, cls().cpu_power,
-                                        None, text, None)
+                                        None, org_text, None)
+        
         if export_passkey:
             _file = Path(file_name)
             cparser = cls._new_parser()
             ctuple_data = cls._new_template(cls,
-                                                **ciphertuple._asdict()
-                                                )
+                                            **ciphertuple._asdict()
+                                            )
             if export_path:
                 _file = Path(export_path) / _file
             cls._export_passkey(cls,
@@ -1664,8 +1651,11 @@ class DecipherEngine(_BaseEngine):
             CEerror('The matching hashed values affirm that no data loss occurred during the decryption process.')
             CEerror(f'{cls_name} decryption algorithm is now finished without encountering any errors for {_file}.')
             print_header(activated=False, with_iterations=False)
-            decr_tuple = self._get_subclass()
-            return decr_tuple(decrypted_file, decrypted_hash)
+            decr_tuple = self._get_subclass(type_file=True)
+            return decr_tuple(
+                        decrypted_file,
+                        decrypted_hash
+                        )
         else:
             raise CipherException(
                 f'The file {_file!r} lacks the required identifier. '
@@ -1673,10 +1663,11 @@ class DecipherEngine(_BaseEngine):
                 f'\nEncryption algorithms identifier:\n{self._identifier}')
     
     @classmethod
-    def _get_subclass(cls):
+    def _get_subclass(cls, type_file=False):
+        decr_type = 'decrypted_{}'.format('text' if not type_file else 'file')
         return cls._create_subclass(
-            cls.__class__.__name__,
-            field_names=('decrypted_text', 'hash_value')
+            'DecipherTuple',
+            field_names=(decr_type, 'hash_value')
         )
     
     def decrypt_text(self) -> NamedTuple:
@@ -1709,13 +1700,14 @@ class DecipherEngine(_BaseEngine):
             hash_type = self._hash_type
             algorithm_type = self._algorithm_type
         
+        encr_text = base64.urlsafe_b64decode(encrypted_text)[len(self._identifier):]
         bsalt = bytes.fromhex(salt)
         biv = bytes.fromhex(iv)
         kdf = self._get_pbk(bsalt, iterations=iterations, hash_type=hash_type)
         passkey = kdf.derive(decipher_key.encode())
         fernet = self._get_cipher(passkey, biv, hash_type=hash_type, algorithm_type=algorithm_type)
         decryptor = fernet.decryptor()
-        decrypted_text = decryptor.update(base64.urlsafe_b64decode(encrypted_text)) + decryptor.finalize()
+        decrypted_text = decryptor.update(encr_text) + decryptor.finalize()
         decrypted_hash = self._calc_str_hash(decrypted_text.decode())
         if hash_val != decrypted_hash:
             self._failed_hash(hash_val, decrypted_hash)
@@ -1740,22 +1732,25 @@ class DecipherEngine(_BaseEngine):
         print_header(activated=True)
         if ciphertuple:
             cls._validate_ciphertuple(ciphertuple)
-            text = ciphertuple.encrypted_text
+            encr_text = ciphertuple.encrypted_text
             decipher_key = ciphertuple.decipher_key
             hash_value = ciphertuple.hash_value
         else:
-            text = cls._validate_object(text, type_is=str, arg='Quick-Decrypt text')
-            decipher_key = cls._validate_object(decipher_key, type_is=str, arg='Quick-Decrypt decipher_key')
-            hash_value = cls._validate_object(hash_value, type_is=str, arg='Quick-Decrypt hash_value')
+            obj_validator = partial(cls._validate_object, type_is=str)
+            encr_text = obj_validator(text, arg='Quick-Decrypt text')
+            decipher_key = obj_validator(decipher_key, arg='Quick-Decrypt decipher_key')
+            hash_value = obj_validator(hash_value, arg='Quick-Decrypt hash_value')
         
+        encr_text = encr_text.encode()[len(cls()._identifier):]
         fernet = cls._new_fernet(bytes.fromhex(decipher_key))
-        decrypted = fernet.decrypt(bytes.fromhex(text)).decode()
-        decrypted_hash = cls._calc_str_hash(decrypted)
-        if hash_value and (decrypted_hash != hash_value):
-            cls._failed_hash(hash_value, decrypted_hash)
+        decr_text = fernet.decrypt(encr_text).decode()
+        decr_hash = cls._calc_str_hash(decr_text)
+        if hash_value and (decr_hash != hash_value):
+            cls._failed_hash(hash_value, decr_hash)
+        
         print_header(activated=False)
         decr_tuple = cls._get_subclass()
-        return decr_tuple(decrypted, hash_value)
+        return decr_tuple(decr_text, hash_value)
 
 
 def generate_crypto_key(**kwargs) -> str:
