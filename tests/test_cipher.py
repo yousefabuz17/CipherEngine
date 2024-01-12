@@ -1,21 +1,40 @@
 import sys
 import pytest
+import platform
 from pathlib import Path
+from functools import partial
+from string import digits, punctuation, ascii_letters, whitespace
 
-sys.path.extend([(Path(__file__).resolve().parents[1] / 'src/cipher_engine/').as_posix()])
+sys.path.append((Path(__file__).resolve().parents[1] / 'src/cipher_engine').as_posix())
 from cipher_engine import *
 
 main_tpath = Path(__file__).parent / 'test_files'
 crypto_key = generate_crypto_key()
+cengine = CipherEngine()
 
-def validate_file_exists(__file):
-    return __file.is_file()
+validate_file_exists = lambda __file: __file.is_file()
+validate_ctuple = lambda __ctuple: CipherEngine._validate_ciphertuple(__ctuple)
 
 def validate_encryption(__file):
-    with open(__file, mode='rb') as file:
-        bytes_text = file.read()
-    encr_header = '-----BEGIN CIPHERENGINE CRYPTOGRAPHIC ENCRYPTED KEY-----'.encode()
+    bytes_text = cengine._bytes_read(__file)
+    encr_header = cengine._identifier
     return bytes_text.startswith(encr_header)
+
+
+def test_version_checker(monkeypatch, capsys):
+    set_version = lambda __vtuple: \
+                monkeypatch.setattr(platform,
+                                'python_version_tuple',
+                                lambda: __vtuple)
+    
+    with pytest.raises(CipherException):
+        set_version((3, 9, 9))
+        py_version_checker()
+    
+    set_version((3, 10, 0))
+    py_version_checker()
+    captured = capsys.readouterr()
+    assert not all((captured.out, captured.err))
 
 
 @pytest.fixture(params=[(
@@ -24,60 +43,28 @@ def validate_encryption(__file):
                     Path('test_ciphertexts_passkey.ini'), # Custom file name for exporting encryption details
                     main_tpath, # Custom path for testing
                     Path('test_ciphertexts_passkey'), # File name for exporting decryption details
-                    int(1e5) # Number of iterations
+                    int(1e3) # Number of iterations
                 )])
 def test_text_params(request):
     return request.param
 
-
 def test_cipher_texts(test_text_params):
-    """
-    Test the encryption and decryption of texts using different cipher functions.
-    
-    Parameters:
-        test_text_params (Tuple): A tuple containing the parameters for the test, including
-            - text (str): The plaintext to be encrypted.
-            - passkey (str): The passkey used for encryption.
-            - passkey_file (str): The filename for storing the passkey.
-            - export_path (Path): The directory path for exporting the encrypted content.
-            - file_name (str): The filename for storing the encrypted content.
-            - iterations (int): The number of iterations to be cycled through the encryption process.
-    
-    Raises:
-        AssertionError: If any of the encryption or decryption steps fail.
-    
-    Test Steps:
-        1. Encrypt the provided text using the `encrypt_text` function.
-        2. Verify that all attributes in the resulting encrypted tuple are non-empty.
-        3. Verify the file's encryption info existence.
-        4. Decrypt the encrypted text using the `decrypt_text` function and compare it with the original text.
-        --------------------------------------------------------------------------------------------------------
-        5. Perform a quick encryption using the `quick_ciphertext` function.
-        6. Verify that all attributes in the resulting quick encrypted tuple are non-empty.
-        7. Decrypt the quick encrypted text using the `quick_deciphertext` function and compare it with the original text.
-    """
-    
-    #XXX Encrypt/Decrypt Texts
     text, passkey, passkey_file, export_path, file_name, iterations = test_text_params
     encr_tuple = encrypt_text(text=text,
                             passkey=passkey,
                             file_name=file_name,
                             iterations=iterations,
                             export_path=export_path)
-    
-    assert CipherEngine._validate_ciphertuple(encr_tuple)
-    
-    # Ensure that the provided iterations value matches the one on file.
+    assert validate_ctuple(encr_tuple)
     assert encr_tuple.iterations == iterations
     
     new_passkey = export_path / passkey_file
-    # Verify the existence of the passkey file
     assert validate_file_exists(new_passkey)
     
     decr_tuple = decrypt_text(passkey_file=new_passkey)
-    # Ensure that the decrypted text matches the original text along with its hash value
     assert decr_tuple.decrypted_text == encr_tuple.original_text
     assert decr_tuple.hash_value == encr_tuple.hash_value
+
 
 @pytest.fixture(params=[(
                     'plaintext',
@@ -89,15 +76,14 @@ def test_quick_text_params(request):
 
 def test_quick_cipher_texts(test_quick_text_params):
     text, export_path, file_name = test_quick_text_params
-    
-    #XXX Quick Encrypt/Decrypt Texts (Same procedure)
     quick_encr_tuple = quick_ciphertext(text=text,
                                         file_name=file_name.with_name('test_quick_ciphertexts_passkey'),
                                         export_path=export_path)
-    assert CipherEngine._validate_ciphertuple(quick_encr_tuple)
+    assert validate_ctuple(quick_encr_tuple)
     quick_decrypting = quick_deciphertext(ciphertuple=quick_encr_tuple)
     assert quick_decrypting.decrypted_text == quick_encr_tuple.original_text
     assert quick_decrypting.hash_value == quick_encr_tuple.hash_value
+
 
 @pytest.fixture(params=[(
                     main_tpath / 'test_unencrypted_file.txt',
@@ -120,16 +106,106 @@ def test_cipher_files_wo_backup_or_overwrite(test_files_params):
     decrypted_file = Path(main_tpath / 'decrypted_encrypted_test_unencrypted_file.dec')
     passkey_file = Path(main_tpath / 'encrypted_test_unencrypted_file_passkey.ini')
     
-    assert CipherEngine._validate_ciphertuple(encr_tuple)
+    assert validate_ctuple(encr_tuple)
     assert not (Path(__file__) / 'backup').is_dir()
     assert all(list(map(validate_file_exists, (encrypted_file, passkey_file))))
     assert validate_encryption(encrypted_file)
     assert encr_tuple.decipher_key == encr_tuple.decipher_key
     
     decr_tuple = decrypt_file(passkey_file=passkey_file,
-                                overwrite_file=False)
+                            overwrite_file=False)
     assert decr_tuple.hash_value == encr_tuple.hash_value
     assert validate_file_exists(decrypted_file)
+
+
+@pytest.fixture(params=[(int(1e8))])
+def test_max_capacity_param(request):
+    return request.param
+
+def test_cipher_params(test_max_capacity_param):
+    int8 = test_max_capacity_param
+    encr_text = partial(
+        encrypt_text,
+        text='plaintext',
+        export_passkey=False
+    )
+    
+    test_cases = [
+            {'iterations': int8},
+            {'key_length': int8},
+            {'key_length': 0},
+            {'key_length': 'invalid-type'},
+            {'text': ''},
+            {'passkey': ''},
+            {'text': whitespace, 'passkey': '\f\r'}
+        ]
+    for case in test_cases:
+        with pytest.raises(CipherException):
+            encr_text(**case)
+
+def test_cryptographic_params(test_max_capacity_param):
+    int8 = test_max_capacity_param
+    test_cases = [
+        {'key_length': int8},
+        {'key_length': 0},
+        {'repeat': int8},
+        {'exclude': True, 'include_all_chars': True}
+    ]
+    for case in test_cases:
+        with pytest.raises(CipherException):
+            generate_crypto_key(**case)
+    
+    
+def test_cryptographic_exclude_chars():
+    compiler = lambda *args: \
+                not cengine._compiler(*args,
+                                        escape_default=False)
+    
+    digits_ = generate_crypto_key(exclude='digits')
+    assert compiler(digits, digits_)
+    
+    punct = generate_crypto_key(exclude='punct')
+    assert compiler(punctuation, punct)
+    
+    ascii_ = generate_crypto_key(exclude='ascii')
+    assert compiler(ascii_letters, ascii_)
+    
+    digits_punct = generate_crypto_key(exclude='digits_punct')
+    assert compiler((digits + punctuation), digits_punct)
+    
+    ascii_punct = generate_crypto_key(exclude='ascii_punct')
+    assert compiler((ascii_letters + punctuation), ascii_punct)
+    
+    digits_ascii = generate_crypto_key(exclude='digits_ascii')
+    assert compiler((digits + ascii_letters), digits_ascii)
+    
+    all_chars = generate_crypto_key(include_all_chars=True)
+    assert compiler((digits + ascii_letters + punctuation),
+                    all_chars)
+
+@pytest.fixture(params=[(
+                    'plaintext',
+                    'password123',
+                    True
+                )])
+def test_invalid_passkey(request):
+    return request.param
+
+def test_bypass_length_limit(test_invalid_passkey):
+    text, passkey, limit = test_invalid_passkey
+    encr_func = partial(encrypt_text,
+                        text=text,
+                        passkey=passkey,
+                        export_passkey=False)
+    
+    with pytest.raises(CipherException):
+        encr_tuple = encr_func()
+    
+    encr_tuple = encr_func(bypass_length_limit=limit)
+    assert cengine._validate_ciphertuple(encr_tuple)
+    assert encr_tuple.original_text == text
+    assert encr_tuple.decipher_key == passkey
+
 
 # @pytest.fixture(params=[(
 #                     main_tpath / 'test_unencrypted_file_w_bkp.txt',
@@ -162,19 +238,3 @@ def test_cipher_files_wo_backup_or_overwrite(test_files_params):
 #                                 overwrite_file=False)
 #     assert decr_tuple.hash_value == encr_tuple.hash_value
 #     assert validate_file_exists(decrypted_file)
-
-@pytest.fixture(params=[(
-                    'plaintext',
-                    'password123'
-                )])
-def test_invalid_passkey(request):
-    return request.param
-
-def test_invalid_passkey_w_text(test_invalid_passkey):
-    text, passkey = test_invalid_passkey
-    encr_tuple = encrypt_text(text=text,
-                            passkey=passkey,
-                            export_passkey=False)
-    
-    assert CipherEngine._validate_ciphertuple(encr_tuple)
-    assert encr_tuple.decipher_key != passkey

@@ -1,6 +1,7 @@
 import ast
 import os
 import re
+import sys
 import math
 import json
 import ctypes
@@ -13,6 +14,7 @@ import secrets
 import warnings
 import operator
 import inspect
+import platform
 import numpy as np
 import configparser
 import tkinter as tk
@@ -39,19 +41,17 @@ from cryptography.hazmat.primitives.ciphers.algorithms import _verify_key_size
 from cryptography.utils import CryptographyDeprecationWarning
 warnings.filterwarnings("ignore", category=CryptographyDeprecationWarning)
 
-
 __all__ = (
         'CipherEngine', 'DecipherEngine',
         'encrypt_file', 'decrypt_file',
         'encrypt_text', 'decrypt_text',
         'quick_ciphertext', 'quick_deciphertext',
         'CipherException', 'generate_crypto_key',
+        'py_version_checker'
         )
 
-B = TypeVar('B', bool, None)
-I = TypeVar('I', int, None)
-N = TypeVar('N', NamedTuple, NoReturn)
-P = TypeVar('P', Path, str)
+__version__ = '0.1.9'
+__author__ = 'Yousef Abuzahrieh <yousef.zahrieh17@gmail.com'
 
 def get_logger(*, name: str=__name__,
                 level: int=logging.DEBUG,
@@ -87,14 +87,39 @@ def get_logger(*, name: str=__name__,
     
     return _logger
 
-logger = get_logger(level=logging.INFO,
-                    write_log=False)
+
+logger = get_logger(level=logging.INFO, write_log=True)
+B = TypeVar('B', bool, None)
+I = TypeVar('I', int, None)
+N = TypeVar('N', NamedTuple, NoReturn)
+P = TypeVar('P', Path, str)
+
+def py_version_checker():
+    tuple2str = lambda __tuple: '.'.join( map(str, __tuple))
+    cmodule = Path(__file__).stem
+    sys_version = tuple(map(int, platform.python_version_tuple()))
+    py_version = sys.version.split()[0]
+    min_version_str = tuple2str(min_version:=(3, 10, 0))
+    if sys_version < min_version:
+        raise CipherException(
+            f"{cmodule!r} requires Python {min_version_str!r} or a more recent version for optimal functionality.\n"
+            f"Your current Python version is {py_version!r}, which has been assessed and flagged as potentially incompatible.\n"
+            "Kindly consider upgrading your Python installation to meet the minimum required version and attempt the operation again.")
+    else:
+        CipherException(
+            f'Python Version: {tuple2str(sys_version)} (Compatible)',
+            log_method=logger.debug
+        )
+
 
 class CipherException(BaseException):
     def __init__(self, *args, log_method: logger=logger.critical):
         self.log_method = log_method
         super().__init__(*args)
         self.log_method(*args)
+
+
+py_version_checker()
 
 
 class _BaseGeneral(NamedTuple):
@@ -172,8 +197,7 @@ class _BasePower:
     def calculate_cpu(self, **kwargs) -> Union[int, Dict[int, int]]:
         return self._get_cpu_power(**kwargs)
     
-    @property
-    def get_cpu_chart(self) -> Dict[int, int]:
+    def _get_cpu_chart(self) -> Dict[int, int]:
         '''CPU _Power Chart'''
         return self._get_cpu_power(return_dict=True)
     
@@ -217,7 +241,7 @@ class _BasePower:
                         args)
                     ))
         
-        if len(args) == 2 and valid_args:
+        if len(args) == 2 or valid_args:
             threshold = cls._MAX_TOKENS
             Sig = namedtuple('SigLarger', ('status', 'threshold'))
             abs_diff = abs(operator.sub(*args))
@@ -292,11 +316,11 @@ class _BasePower:
         return total_power
     
     @classmethod
-    def _capacity_error(cls, *args) -> NoReturn:
+    def _capacity_error(cls, __strings) -> NoReturn:
         raise CipherException(
             f"The specified counts surpasses the computational capacity required for {cls.__name__!r}. "
             " It is recommended to use a count of 100 <= x <= 1000, considering the specified 'key_length'. "
-            *args)
+            f"{__strings}")
     
     @property
     def default_cpu_count(self):
@@ -349,7 +373,7 @@ class _BaseEngine(_BasePower):
     export_path: Optional[P] = field(repr=False, default=None)
     verbose: Optional[B] = field(repr=False, default=False)
     overwrite_file: Optional[B] = field(repr=False, default=False)
-    kwargs: Dict = field(repr=False, default=dict)
+    bypass_length_limit: bool = field(repr=False, default=False)
     
     _BACKEND: Any = default_backend()
     _ALL_CHARS: str = (digits + punctuation + ascii_letters)
@@ -443,7 +467,7 @@ class _BaseEngine(_BasePower):
             #** 31: Red, 32: Green
             color_code = '31' if not activated else '32'
             print(
-            '\033[1;{}m{}\033[0m'.format(color_code, header.center(term_size, '*'), flush=True)
+            '\033[1;{}m{}\033[0m'.format(color_code, header.center(term_size, '='), flush=True)
             )
     
     @staticmethod
@@ -493,6 +517,10 @@ class _BaseEngine(_BasePower):
             _text = _file.read()
         return _text
     
+    @staticmethod
+    def none_generator(__data, default=None):
+        return [default] * len(__data)
+    
     @classmethod
     def _create_subclass(cls,
                         typename: str='FieldTuple',
@@ -526,8 +554,9 @@ class _BaseEngine(_BasePower):
             raise CipherException(f"{num_attrs!r} is not a positive integer.")
         
         _field_names = field_names or np.core.defchararray.add('attr', np.arange(1, num_attrs+1).astype(str))
-        default_vals = defaults or (None,) * len(_field_names)
-        field_docs = field_doc or ''
+        default_vals = defaults or cls.none_generator(_field_names)
+        
+        field_docs = field_doc or 'Field documentation not provided.'
         module_name = module or typename
         new_tuple = namedtuple(typename=typename,
                                 field_names=_field_names,
@@ -552,12 +581,12 @@ class _BaseEngine(_BasePower):
                         if (type_file and not k.endswith('text'))
                         or (not type_file and not k.endswith('file')))
         ordered_params = sorted(specific_params)
-        args = [None]*len(ordered_params) if not args else args
+        args = cls.none_generator(ordered_params) if not args else args
         return cls._create_subclass('CipherTuple',
                                     field_names=ordered_params,
                                     values=args,
                                     field_doc='Primary NamedTuple \
-                                            for encryption/decryption purposes.')
+                                            for storing encryption details.')
     
     @staticmethod
     def _validate_file(__file: P) -> Path:
@@ -613,13 +642,13 @@ class _BaseEngine(_BasePower):
         
         #### Notes:
             - This method employs the `translate` method to efficiently filter characters.
-            - Whitespace, form feed (\f), and vertical tab (\v) are automatically excluded.
+            - Whitespace (' \t\n\r\v\f') is automatically excluded.
             - To exclude additional characters, provide them as a string in the `exclude` parameter.
         
         """
-        check_str = cls._validate_object(__string, type_is=str)
+        check_str = cls._validate_object(__string, type_is=str, arg='Char')
         full_string = ''.join(check_str)
-        filter_out = ("\f\v" + whitespace + exclude)
+        filter_out = (whitespace + exclude)
         string_filtered = full_string.translate(str.maketrans('', '', filter_out))
         return string_filtered
     
@@ -790,24 +819,29 @@ class _BaseEngine(_BasePower):
         else:
             repeat_val = cls._MAX_CORES
         
-        if repeat_val >= cls._MAX_CAPACITY:
-            cls._capacity_error(f'Max Tokens: {cls._MAX_TOKENS}',
-                                f'Character Repeat Count: {repeat_val}')
-        
         key_len = cls._validate_object(key_length, type_is=int, arg='key_length')
-        threshold = cls._sig_larger(key_len, int(repeat_val))
+        if any((repeat_val >= cls._MAX_CAPACITY,
+                key_len >= cls._MAX_CAPACITY)):
+            cls._capacity_error(f'\nMax Tokens: {cls._MAX_CAPACITY:_}\n'
+                                f'Character Repeat Count: {repeat_val:_}')
+        
+        if not key_len:
+            raise CipherException(
+                "The 'key_length' parameter must have a value greater than zero.\n")
         
         if not bypass_length_limit and \
-            any((key_len < cls._MIN_KEYLENGTH,
-                key_len > cls._MAX_KEYLENGTH)):
+                any((key_len < cls._MIN_KEYLENGTH,
+                    key_len > cls._MAX_KEYLENGTH)):
             raise CipherException(
-                f'\'key_length\' must be of value {cls._MIN_KEYLENGTH} <= x <= {cls._MAX_KEYLENGTH:_}.'
-                )
+                                f"key_length must be of value {cls._MIN_KEYLENGTH} <= x <= {cls._MAX_KEYLENGTH:_}.\n"
+                                f'Specified Key Length: {key_len}'
+                                )
         
+        threshold = cls._sig_larger(key_len, int(repeat_val))
         if not threshold.status:
             cls._MAX_TOKENS = threshold.threshold
             CipherException(
-                "The specified values for 'key_length' or 'iterations' exceeds the number of characters that can be cycled during repetition."
+                "The specified values for 'key_length' or 'iterations' (repeat) exceeds the number of characters that can be cycled during repetition."
                 f" Higher values for 'max_tokens' count is recommended for better results ('max_tokens' count is now {cls._MAX_TOKENS}).",
                 log_method=logger.warning
                 )
@@ -820,15 +854,17 @@ class _BaseEngine(_BasePower):
             filtered_chars = all_chars
         
         if exclude:
-            _exclude = cls._validate_object(exclude, type_is=str, arg='exlcude')
-            exclude_type = cls._exclude_type(_exclude)
-            filtered_chars = filtered_chars if not exclude_type \
-                            else cls._filter_chars(all_chars, exclude=exclude_type)
+            exclude_obj = cls._validate_object(exclude, type_is=str, arg='exclude_chars')
+            filter_char = partial(cls._filter_chars, all_chars)
+            exclude_type = cls._exclude_type(exclude_obj)
+            filtered_chars = filter_char(exclude=exclude) if not exclude_type else \
+                            filter_char(exclude=exclude_type)
         
         passkey = SystemRandom().sample(
                         population=filtered_chars,
                         k=min(key_len, len(filtered_chars))
                         )
+        
         return ''.join(passkey)
     
     @classmethod
@@ -1042,11 +1078,11 @@ class _BaseEngine(_BasePower):
         """
         all_parameters = cls._template_parameters()
         #** isinstance(__obj, NamedTuple)?
-        if all((isinstance(__ctuple, tuple),
-                hasattr(__ctuple, '_fields'),
+        if hasattr(__ctuple, '_fields') and \
+            all((isinstance(__ctuple, tuple),
                 isinstance(__ctuple._fields, tuple),
                 hasattr(__ctuple, '__module__'),
-                getattr(__ctuple, '__module__')=='CipherTuple')):
+                __ctuple.__module__=='CipherTuple')):
             
             ctuple_set = set(__ctuple._asdict())
             ctuple_paramters = all_parameters & ctuple_set
@@ -1069,7 +1105,7 @@ class _BaseEngine(_BasePower):
         
         else:
             raise CipherException(
-                'Invalid NamedTuple Structure: ',
+                'Invalid NamedTuple Structure:\n'
                 f"{__ctuple!r} must be of type {NamedTuple.__name__!r}")
         
         return __ctuple
@@ -1118,7 +1154,10 @@ class _BaseEngine(_BasePower):
         return
     
     @classmethod
-    def _compiler(cls, __defaults, __k, escape_k=True, search=True) -> str:
+    def _compiler(cls,
+                __defaults, __k,
+                escape_default=True,
+                escape_k=True, search=True) -> str:
         """
         Validate if the given input matches the provided defaults.
 
@@ -1140,7 +1179,8 @@ class _BaseEngine(_BasePower):
             esc_k = cls._validate_object(__k, type_is=str, arg=__k)
         
         defaults = map(re.escape, map(str, __defaults))
-        pattern = '|'.join(defaults)
+        flag = '|' if escape_default else ''
+        pattern = f'{flag}'.join(defaults)
         if escape_k:
             esc_k = '|'.join(map(re.escape, __k))
         
@@ -1158,16 +1198,17 @@ class CipherEngine(_BaseEngine):
     CipherEngine class for encrypting files and text data using symmetric key cryptography.
 
     #### Attributes:
-    - passkey: Optional[Union[str, int]]: The passphrase or key for used for encryption.
-    - key_length: Optional[int]: The length of the cryptographic decipher key (default: 32).
-    - iterations: Optional[int]: The number of iterations for key derivation.
-    - exclude_chars: Union[list, str]: Characters to exclude during passphrase generation (default: None).
-    - backup_file: bool: Flag indicating whether to create a backup of the original file (default: True).
-    - export_passkey: bool: Flag indicating whether to export the passphrase to a separate file (default: True).
-    - include_all_chars: bool: Flag indicating whether to include all characters during passphrase generation (default: False).
-    - min_power: bool: Flag indicating whether to use the minimum power for key derivation (default: False).
-    - max_power: bool: Flag indicating whether to use the maximum power for key derivation (default: False).
-    - serializer: str: The type of serialization to be used for exporting the passkey file ('json' or 'ini').
+    - `passkey`: Optional[Union[str, int]]: The passphrase or key for used for encryption.
+    - `key_length`: Optional[int]: The length of the cryptographic decipher key (default: 32).
+    - `iterations`: Optional[int]: The number of iterations for key derivation.
+    - `exclude_chars`: Union[list, str]: Characters to exclude during passphrase generation (default: None).
+    - `backup_file`: bool: Flag indicating whether to create a backup of the original file (default: True).
+    - `export_passkey`: bool: Flag indicating whether to export the passphrase to a separate file (default: True).
+    - `include_all_chars`: bool: Flag indicating whether to include all characters during passphrase generation (default: False).
+    - `min_power`: bool: Flag indicating whether to use the minimum power for key derivation (default: False).
+    - `max_power`: bool: Flag indicating whether to use the maximum power for key derivation (default: False).
+    - `serializer`: str: The type of serialization to be used for exporting the passkey file ('json' or 'ini').
+    - `gui_passphrase`: Flag indicating whether to use a GUI for passphrase input (default: False). 
     
     #### Methods:
     - encrypt_file(): Encrypts a specified file.
@@ -1180,10 +1221,9 @@ class CipherEngine(_BaseEngine):
     """
     __slots__ = ('__weakrefs__', '_iterations',
                 'file', '_file', 'text', 'passkey_file',
-                'export_path', 'verbose', 'overwrite_file',
-                'kwargs')
+                'export_path', 'verbose', 'overwrite_file')
     
-    passkey: Optional[Union[str, int]] = field(init=True, repr=False, default=None)
+    passkey: Optional[Union[str, int]] = field(repr=False, default=None)
     key_length: Optional[I] = field(repr=True, default=_BaseEngine._MIN_KEYLENGTH)
     iterations: Optional[I] = field(repr=True, default=None)
     exclude_chars: str = field(repr=True, default=None)
@@ -1196,7 +1236,6 @@ class CipherEngine(_BaseEngine):
     algorithm_type: str = field(repr=False, default=None)
     serializer: str = field(repr=False, default=None)
     gui_passphrase: bool = field(repr=False, default=False)
-    bypass_keylength: bool = field(repr=False, default=False)
     
     def __post_init__(self):
         """
@@ -1207,8 +1246,9 @@ class CipherEngine(_BaseEngine):
                         overwrite_file=self.overwrite_file,
                         verbose=self.verbose,
                         export_path=self.export_path,
-                        
+                        bypass_length_limit=self.bypass_length_limit,
                         text=self.text)
+        
         self._file = None if not self.file else self._validate_file(self.file)
         self._iterations = self._calculate_iterations()
         self._jserializer = self._json_serializer()
@@ -1221,12 +1261,9 @@ class CipherEngine(_BaseEngine):
                                 self.passkey,
                                 key_length=self.key_length,
                                 exclude=self.exclude_chars,
-                                include_all_chars=self.include_all_chars
+                                include_all_chars=self.include_all_chars,
+                                bypass_length_limit=self.bypass_length_limit
                                 )
-    
-    @classmethod
-    def encryption_header(cls):
-        return cls()._identifier
     
     def _json_serializer(self):
         serializer = self._validate_object(
@@ -1241,6 +1278,10 @@ class CipherEngine(_BaseEngine):
         passphrase = self._validate_passkey(gui_pass)
         root.destroy()
         return passphrase
+    
+    @property
+    def cpu_chart(self):
+        return self._get_cpu_chart()
     
     def _validate_hash_algo(self):
         default_htype =  self._General._HASH_DEFAULT
@@ -1264,9 +1305,9 @@ class CipherEngine(_BaseEngine):
             - int: Number of iterations.
         """
         if self.iterations:
-            iter_count = self._validate_object(self.iterations, type_is=int, arg='iterations')
+            iter_count = self._validate_object(self.iterations, type_is=int, arg='Iterations')
             if iter_count >= self._MAX_CAPACITY:
-                return self._capacity_error(f'Specified value: {iter_count}',
+                return self._capacity_error(f'\nSpecified value: {iter_count}\n'
                                             f'Max Iterations value: {self._MAX_CAPACITY}')
             return iter_count
         
@@ -1284,7 +1325,7 @@ class CipherEngine(_BaseEngine):
                             )
         return self.cpu_power
     
-    def _validate_passkey(self, __passkey: str = None, **kwargs) -> str:
+    def _validate_passkey(self, __passkey: str, **kwargs) -> str:
         """
         Validates a given passkey. If the passkey is not provided or contains invalid characters,
         generates a new key based on the specified criteria.
@@ -1297,25 +1338,32 @@ class CipherEngine(_BaseEngine):
         str: Validated passkey.
         """
         
-        CEwarning = partial(CipherException,
-                            "For security reasons, the passkey must have a length of at least 32 characters. "
-                            "If a shorter key is desired, you can provide a 'bypass_keylength' parameter. "
-                            "Otherwise, the system will default to a minimum fixed key length of 32.",
-                            log_method=logger.warning)
-        
         def validator():
             passkey = self._validate_object(__passkey, type_is=str, arg='Passphrase')
             checker = partial(lambda *args: all((*args,)), self._char_checker(passkey))
             checked = checker(len(passkey) >= self._MIN_KEYLENGTH)
-            if self.bypass_keylength and not checked:
-                # No limitations. Empty strings are allowed.
-                checked = checker(0 <= len(passkey) < self._MIN_KEYLENGTH)
-            elif not self.bypass_keylength and not checked:
-                CEwarning()
+            if self.bypass_length_limit and not checked:
+                # No restrictions apply, except for the exclusion of empty strings.
+                # Strings with a maximum length of one character are permissible.
+                checked = checker(0 < len(passkey) < self._MIN_KEYLENGTH)
+            elif not self.bypass_length_limit and not checked:
+                raise CipherException(
+                    "For security reasons, the passkey must have a length of at least 32 characters. "
+                    "If a shorter key is desired, you can provide a 'bypass_length_limit' parameter. "
+                    "Otherwise, the system will raise an error."
+                )
+            
             return checked
         
         if __passkey and validator():
             return __passkey
+        
+        if not self._char_checker(__passkey):
+            raise CipherException(
+                    'The provided passphrase contains illegal characters and cannot be utilized.\n'
+                    f'Illegal passphrase: {__passkey!r}'
+                    )
+        
         
         return self._generate_key(**kwargs)
     
@@ -1459,6 +1507,11 @@ class CipherEngine(_BaseEngine):
         print_header()
         
         org_text = self._validate_object(self.text, type_is=str)
+        if not org_text:
+            raise CipherException(
+                'The specified text is empty and cannot be encrypted. '
+                'Please ensure that the input value is not empty before attempting to perform the encryption operation.'
+            )
         hashed_text = self._calc_str_hash(org_text)
         kdf = self._get_pbk(iterations=self._iterations,
                             hash_type=self._hash_type)
@@ -1539,8 +1592,7 @@ class DecipherEngine(_BaseEngine):
         super().__init__(passkey_file=self.passkey_file,
                         verbose=self.verbose,
                         overwrite_file=self.overwrite_file,
-                        ciphertuple=self.ciphertuple,
-                        kwargs=self.kwargs)
+                        ciphertuple=self.ciphertuple)
         self._get_dependencies()
     
     def _get_dependencies(self):
@@ -1567,7 +1619,7 @@ class DecipherEngine(_BaseEngine):
         if self.ciphertuple:
             self._ciphertuple = self._validate_ciphertuple(self.ciphertuple)
     
-    def decrypt_file(self) -> NamedTuple | NoReturn:
+    def decrypt_file(self) -> N:
         self._log_separator('decrypting-file')
         
         config_path = self._passkey_file
@@ -1875,7 +1927,6 @@ def decrypt_text(**kwargs) -> NamedTuple:
     ### Parameters:
         - `ciphertuple` (NamedTuple): The tuple generated from any encryption process to be used for decryption.
         - `passkey_file`: str | Path: The path to the file containing the encryption details.
-        - `export_path`: str | Path: The path to export the output file (default: None).
         - `verbose`: bool | None: Flag indicating whether to print verbose messages (default: False).
 
     #### Returns:
@@ -1935,3 +1986,18 @@ def decrypt_file(**kwargs) -> NamedTuple:
     "/path/to/decrypted_file.txt"
     """
     return DecipherEngine(**kwargs).decrypt_file()
+
+def main():
+    key = generate_crypto_key(exclude='punct')
+    
+    print(key)
+    # print(CipherEngine._compiler(punctuation, key, escape_default=False))
+    a = encrypt_text(text="plaintext", passkey='password123', export_passkey=False, verbose=False, gui_passphrase=False, bypass_length_limit=True)
+    print(a)
+    # print(decrypt_text(ciphertuple=a))
+    # print(CipherEngine().cpu_chart)
+    # print("\f\v" + whitespace in CipherEngine._ALL_CHARS)
+    
+
+if __name__ == '__main__':
+    main()
