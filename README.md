@@ -2,6 +2,30 @@
 
 `CipherEngine` is a Python library that provides tools for encrypting and decrypting files and text data using symmetric key cryptography. It uses secure algorithms and includes features such as key derivation, salt generation, and file integrity checks.
 
+# Table of Contents
+
+- [Primary Features](#primary-features)
+- [Enhanced Security Measures](#enhanced-security-measures)
+- [CipherEngine Class](#cipherengine-class)
+    - [Attributes](#attributes)
+    - [Methods](#methods)
+    - [Example](#example)
+- [DecipherEngine Class](#decipherengine-class)
+    - [Overview](#overview)
+    - [Attributes](#attributes-1)
+    - [Methods](#methods-1)
+    - [Example](#example-1)
+- [Installation](#installation)
+- [Usage Examples](#usage-examples)
+- [Generate a Secure Cryptographic Key](#generate-a-secure-cryptographic-key)
+- [Quickly Encrypt/Decrypt Text With Ease](#quickly-encryptdecrypt-text-with-ease)
+- [Encrypt Text using CipherEngine.encrypt_text](#encrypt-text-using-cipherengineencrypt_text)
+- [Encrypt a file using CipherEngine.encrypt_file](#encrypt-a-file-using-cipherengineencrypt_file)
+- [Requirements](#requirements)
+- [Risk Disclaimer](#risk-disclaimer)
+- [Conclusion](#conclusion)
+
+
 ## Primary Features
 
 - **File Encryption and Decryption**: Securely encrypt and decrypt files using symmetric key cryptography, incorporating advanced security measures such as PBKDF2 key derivation and unique encryption identifiers.
@@ -78,7 +102,14 @@ The `DecipherEngine` class, an extension of the CipherEngine, is dedicated to de
 
 ### Attributes
 
-The `DecipherEngine` class inherits attributes from the `CipherEngine` class.
+- `ciphertuple` (NamedTuple): A NamedTuple containing details generated during the quick encryption process. It includes information such as the algorithm type, passkey, encrypted text, hash type, hash value, CPU power, original text, and salt value.
+- `text` (Any | None): The encrypted text to be decrypted. This parameter represents the ciphertext obtained from the encryption process.
+- `decipher_key` (Any | None): The decryption passphrase or key required to decrypt the encrypted text. It is crucial for the successful decryption of the provided ciphertext.
+- `hash_value` (Any | None): The hash value of the original data. This value is used for integrity checking during the decryption process. It ensures that the decrypted text matches the original data, providing data integrity verification.
+- `passkey_file`: str | Path: The path to the file containing the encryption details.
+- `overwrite_file`: bool | None: Flag indicating whether to overwrite the original file during decryption (default: False).
+- `verbose`: bool | None: Flag indicating whether to print verbose messages (default: False).
+
 
 ### Methods
 
@@ -94,31 +125,54 @@ decipher = DecipherEngine(passkey_file='encrypted_file_passkey.ini')
 decipher.decrypt_file()
 ```
 
+### Returns
+> - **Each method returns a NamedTuple instance, providing a convenient way to handle and pass around the encryption results.**
+> - **This NamedTuple can be seamlessly utilized with the decryption methods, eliminating the need for manually specifying each attribute during the decryption process.**
+
 ---
 
-### Import Usage Examples
+# Installation
 
+To use `CipherEngine` in your Python project, you can install it via pip. Open your terminal or command prompt and run the following command:
+
+```bash
+pip install cipher-engine
+```
+---
+
+# Usage Examples
+
+## Import Module
 ```python
 from cipherengine import *
 # __all__ = (
-        # 'CipherEngine', 'DecipherEngine',
-        # 'encrypt_file', 'decrypt_file',
-        # 'encrypt_text', 'decrypt_text',
-        # 'quick_ciphertext', 'quick_deciphertext',
-        # 'CipherException', 'generate_crypto_key',
-        # )
+# 'CipherEngine', 'DecipherEngine',
+# 'encrypt_file', 'decrypt_file',
+# 'encrypt_text', 'decrypt_text',
+# 'quick_ciphertext', 'quick_deciphertext',
+# 'CipherException', 'generate_crypto_key',
+# )
+```
 
-# Generate a cryptographic key
-crypto_key = generate_crypto_key(key_length=32)
-output: Mc2nTJ2zosmNxEu6cXF99lapaEEgWxjt
+## Generate a Secure Cryptographic Key
+```python
+# Generate a cryptographic key using specified parameters
+crypto_key = generate_crypto_key(key_length=int(1e5))
+# Output: Mc2nTJ2zosmNxEu6cXF99lapaEEgWxjt....
 
 crypto_key = generate_crypto_key(include_all_chars=True)
-output: YGWm;2]-vLT*YS;My/mm5e\B[db$xfI]
+# Output: YGWm;2]-vLT*YS;My/mm5e\B[db$xfI
 
-# Quick encryption of text data using CipherEngine
-result_quick_ciphertext = quick_ciphertext(text='Hello, World!')
-output: (NamedTuple)
-CipherTuple(algorithm_type='AES', decipher_key='546d746a556d746965555a464e6b4a5256553568563035584e466c4d62553172635735536355316e4d456f3d', encrypted_text='-----BEGIN CIPHERENGINE CRYPTOGRAPHIC ENCRYPTED KEY-----gAAAAABlnW67n3zkDLzoLzpTtpOVdrzKwXI5qNsqXOV8bFL34sYekvRwxAH4WciesqC3UPUBB8H7Gklm5GQdV12ZzElZrCEtEg==', hash_type='SHA512', hash_value='dffd6021bb2bd5b0af676290809ec3a53191dd81c7f70a4b28688a362182986f', iterations=139239, iv_value=None, original_text='Hello, World!', salt_value=None)
+crypto_key = generate_crypto_key(exclude='digits_punct')
+# Output: wmsjRLFxnVmXJfHGzjVNgWtRogZZQeGs
+```
+
+## Quickly Encrypt/Decrypt Text With Ease
+```python
+# Quick encryption of text data using CipherEngine.quick_encrypt
+result_quick_ciphertext = quick_ciphertext(text='Hello, World!', export_passkey=False)
+# Output: (NamedTuple)
+# CipherTuple(algorithm_type='AES', decipher_key='546d746a556d746965555a464e6b4a5256553568563035584e466c4D62553172635735536355316e4D456f3d', encrypted_text='-----BEGIN CIPHERENGINE CRYPTOGRAPHIC ENCRYPTED KEY-----gAAAAABlnW67n3zkDLzoLzpTtpOVdrzKwXI5qNsqXOV8bFL34sYekvRwxAH4WciesqC3UPUBB8H7Gklm5GQdV12ZzElZrCEtEg==', hash_type='SHA512', hash_value='dffd6021bb2bd5b0af676290809ec3a53191dd81c7f70a4b28688a362182986f', iterations=139239, iv_value=None, original_text='Hello, World!', salt_value=None)
 
 # Quick decryption of text data
 result_quick_deciphertext = quick_deciphertext(
@@ -126,40 +180,71 @@ result_quick_deciphertext = quick_deciphertext(
     decipher_key='my_secret_key',
     hash_value='...'
 )
-output: (NamedTuple)
-DecipherTuple(decrypted_text='Hello, World!', hash_value='dffd6021bb2bd5b0af676290809ec3a53191dd81c7f70a4b28688a362182986f')
+# Output: (NamedTuple)
+# DecipherTuple(decrypted_text='Hello, World!', hash_value='dffd6021bb2bd5b0af676290809ec3a53191dd81c7f70a4b28688a362182986f')
 
+# Preferably can pass in the NamedTuple instead.
+quick_deciphertext(ciphertuple=result_quick_ciphertext)
+```
+
+## Encrypt Text using CipherEngine.encrypt_text
+```python
 # Encrypt text using CipherEngine.encrypt_text
 result_encrypt_text = encrypt_text(text='Hello, World!', key_length=32, export_path='output')
-output: (NamedTuple)
-CipherTuple(algorithm_type=<class 'cryptography.hazmat.primitives.ciphers.algorithms.AES'>, decipher_key='4p8keHiYD5snme5DVUU8UuxKY2A9aFTc', encrypted_text='QKZrhffcL1TWS2J2fg==', hash_type=<class 'cryptography.hazmat.primitives.hashes.SHA512'>, hash_value='dffd6021bb2bd5b0af676290809ec3a53191dd81c7f70a4b28688a362182986f', iterations=139239, iv_value='bbaf9031f11a2a7ac1a8e6384d73a874', original_text='Hello, World!', salt_value='ad12ab5e72028b16a77e03a0d4f7fce0')
+# Output: (NamedTuple)
+# CipherTuple(algorithm_type='AES', decipher_key='4p8keHiYD5snme5DVUU8UuxKY2A9aFTc', encrypted_text='QKZrhffcL1TWS2J2fg==', hash_type='SHA512', hash_value='dffd6021bb2bd5b0af676290809ec3a53191dd81c7f70a4b28688a362182986f', iterations=139239, iv_value='bbaf9031f11a2a7ac1a8e6384d73a874', original_text='Hello, World!', salt_value='ad12ab5e72028b16a77e03a0d4f7fce0')
 
 # Decrypt text using DecipherEngine.decrypt_text
 result_decrypt_text = decrypt_text(
     ciphertuple=result_encrypt_text,
     passkey_file='output/info.ini',
     export_path='output/decrypted')
-output: (NamedTuple)
-DecipherTuple(decrypted_text='Hello, World!', hash_value='dffd6021bb2bd5b0af676290809ec3a53191dd81c7f70a4b28688a362182986f')
+# Output: (NamedTuple)
+# DecipherTuple(decrypted_text='Hello, World!', hash_value='dffd6021bb2bd5b0af676290809ec3a53191dd81c7f70a4b28688a362182986f')
+# or NamedTuple
+decrypt_text(ciphertuple=result_encrypt_text)
+```
 
+## Encrypt a File using CipherEngine.encrypt_file
+```python
 # Encrypt a file using CipherEngine.encrypt_file
 result_encrypt_file = encrypt_file(
     file='test.txt',
     passkey=crypto_key,
-    iterations=1000,
+    iterations=int(1e6),
     export_path='output')
-output: (NamedTuple)
-CipherTuple(algorithm_type='AES', decipher_key='J]TTE~:vGzQ]E*?i;0br&!0,tY+zxSN^', encrypted_file='test.aes', hash_type='SHA512',hash_value='01e675506785122a5055d79a9e8fcb919c1b7838bd1d1209cd42ac67730d1f90', iterations=69619, iv_value='b26516ae7a074299bed53bbb92ebc34f', original_file='test.aes', salt_value='8cd661ff966f42fc8174623ff51e8bdd')
+# Output: (NamedTuple)
+# CipherTuple(algorithm_type='AES', decipher_key='J]TTE~:vGzQ]E*?i;0br&!0,tY+zxSN^', encrypted_file='test.aes', hash_type='SHA512', hash_value='01e675506785122a5055d79a9e8fcb919c1b7838bd1d1209cd42ac67730d1f90', iterations=69619, iv_value='b26516ae7a074299bed53bbb92ebc34f', original_file='test.aes', salt_value='8cd661ff966f42fc8174623ff51e8bdd')
 
 # Decrypt a file using DecipherEngine.decrypt_file
 result_decrypt_file = decrypt_file(
     passkey_file='output/test_passkey.ini')
-output: (NamedTuple)
-DecipherTuple(decrypted_file=PosixPath('test.aes'), hash_value='5c0c10f62a2798b8f4f2cbb3d677fc9330d87250d3a1b27830ab050ba21c87ab')
+# Output: (NamedTuple)
+# DecipherTuple(decrypted_file=PosixPath('test.aes'), hash_value='5c0c10f62a2798b8f4f2cbb3d677fc9330d87250d3a1b27830ab050ba21c87ab')
 ```
 
----
+# Requirements
+- **Python**: 3.10 or above
+  - *Note: This project specifically requires Python 3.10. Compatibility issues have been identified when using Python 3.9 due to the usage of the kw_only parameter for dataclasses, which is crucial for this project.*
+
+- **cryptography**: ~=41.0.4
+- **numpy**: ~=1.26.3
+- **psutil**: ~=5.9.7
+- **pytest**: ~=7.4.3
+- **setuptools**: ~=68.2.2
+
+## Risk Disclaimer
+
+Ensuring the proper and secure handling of data is of paramount importance when employing the `CipherEngine` library. To minimize the risk of potential data loss, consider the following guidelines:
+
+- **Backup File Parameter**: Always make use of the `backup_file` parameter to generate backups of your original files before initiating the encryption process. This provides an added layer of safety, allowing you to restore data in case of unexpected issues.
+
+- **Imperfect Encryption**: It's essential to recognize that, despite robust encryption measures, no encryption method can be deemed entirely infallible. Under specific circumstances, encrypted data may still be susceptible to decryption. Be cognizant of the inherent limitations and complexities involved in cryptographic processes.
+
+- **USE AT YOUR OWN RISK**: The author of the `CipherEngine` library holds no responsibility for any data loss that may occur during the usage of the library. Users are advised to exercise caution, adhere to best practices, and implement proper backup procedures to mitigate potential risks.
+
+Exercise responsibility and vigilance in your usage of the library, keeping these considerations in mind. Understand that while the `CipherEngine` offers powerful encryption and decryption capabilities, it is not exempt from potential risks associated with the broader landscape of data security.
 
 ## Conclusion
 
-The `CipherEngine` project offers a versatile and robust solution for symmetric key cryptography. Explore the provided classes and methods to integrate secure encryption and decryption functionality into your Python projects.
+In summary, the `CipherEngine` project presents a versatile and robust framework for symmetric key cryptography. Discover the available classes and methods to seamlessly incorporate secure encryption and decryption functionality into your Python projects.

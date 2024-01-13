@@ -1,6 +1,5 @@
 import sys
 import pytest
-import platform
 from pathlib import Path
 from functools import partial
 from string import digits, punctuation, ascii_letters, whitespace
@@ -19,22 +18,6 @@ def validate_encryption(__file):
     bytes_text = cengine._bytes_read(__file)
     encr_header = cengine._identifier
     return bytes_text.startswith(encr_header)
-
-
-def test_version_checker(monkeypatch, capsys):
-    set_version = lambda __vtuple: \
-                monkeypatch.setattr(platform,
-                                'python_version_tuple',
-                                lambda: __vtuple)
-    
-    with pytest.raises(CipherException):
-        set_version((3, 9, 9))
-        py_version_checker()
-    
-    set_version((3, 10, 0))
-    py_version_checker()
-    captured = capsys.readouterr()
-    assert not all((captured.out, captured.err))
 
 
 @pytest.fixture(params=[(
@@ -201,7 +184,7 @@ def test_bypass_length_limit(test_invalid_passkey):
     with pytest.raises(CipherException):
         encr_tuple = encr_func()
     
-    encr_tuple = encr_func(bypass_length_limit=limit)
+    encr_tuple = encr_func(bypass_keylength=limit)
     assert cengine._validate_ciphertuple(encr_tuple)
     assert encr_tuple.original_text == text
     assert encr_tuple.decipher_key == passkey

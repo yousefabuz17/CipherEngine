@@ -14,7 +14,6 @@ import secrets
 import warnings
 import operator
 import inspect
-import platform
 import numpy as np
 import configparser
 import tkinter as tk
@@ -46,8 +45,7 @@ __all__ = (
         'encrypt_file', 'decrypt_file',
         'encrypt_text', 'decrypt_text',
         'quick_ciphertext', 'quick_deciphertext',
-        'CipherException', 'generate_crypto_key',
-        'py_version_checker'
+        'CipherException', 'generate_crypto_key'
         )
 
 __version__ = '0.1.9'
@@ -94,32 +92,12 @@ I = TypeVar('I', int, None)
 N = TypeVar('N', NamedTuple, NoReturn)
 P = TypeVar('P', Path, str)
 
-def py_version_checker():
-    tuple2str = lambda __tuple: '.'.join( map(str, __tuple))
-    cmodule = Path(__file__).stem
-    sys_version = tuple(map(int, platform.python_version_tuple()))
-    py_version = sys.version.split()[0]
-    min_version_str = tuple2str(min_version:=(3, 10, 0))
-    if sys_version < min_version:
-        raise CipherException(
-            f"{cmodule!r} requires Python {min_version_str!r} or a more recent version for optimal functionality.\n"
-            f"Your current Python version is {py_version!r}, which has been assessed and flagged as potentially incompatible.\n"
-            "Kindly consider upgrading your Python installation to meet the minimum required version and attempt the operation again.")
-    else:
-        CipherException(
-            f'Python Version: {tuple2str(sys_version)} (Compatible)',
-            log_method=logger.debug
-        )
-
 
 class CipherException(BaseException):
     def __init__(self, *args, log_method: logger=logger.critical):
         self.log_method = log_method
         super().__init__(*args)
         self.log_method(*args)
-
-
-py_version_checker()
 
 
 class _BaseGeneral(NamedTuple):
@@ -182,17 +160,15 @@ class _BasePower:
     
     @property
     def clock_speed(self) -> NamedTuple:
-        clock_spd = self._SPEED
-        if clock_spd is None:
-            clock_spd = self._get_clock_speed()
-        return clock_spd
+        if self._SPEED is None:
+            self._SPEED = self._get_clock_speed()
+        return self._SPEED
     
     @property
     def cpu_power(self) -> Union[int, Dict[int, int]]:
-        cpu_power = self._POWER
-        if cpu_power is None:
-            cpu_power = self._get_cpu_power()
-        return cpu_power
+        if self._POWER is None:
+            self._POWER = self._get_cpu_power()
+        return self._POWER
     
     def calculate_cpu(self, **kwargs) -> Union[int, Dict[int, int]]:
         return self._get_cpu_power(**kwargs)
@@ -245,7 +221,7 @@ class _BasePower:
             threshold = cls._MAX_TOKENS
             Sig = namedtuple('SigLarger', ('status', 'threshold'))
             abs_diff = abs(operator.sub(*args))
-            status = operator.le(*map(math.log1p, (abs_diff, threshold)))
+            status: bool = operator.le(*map(math.log1p, (abs_diff, threshold)))
             return Sig(status, max(max(args), threshold))
         raise CipherException(
             'Excessive arguments provided; requires precisely two numerical values, such as integers or floats.'
@@ -373,7 +349,7 @@ class _BaseEngine(_BasePower):
     export_path: Optional[P] = field(repr=False, default=None)
     verbose: Optional[B] = field(repr=False, default=False)
     overwrite_file: Optional[B] = field(repr=False, default=False)
-    bypass_length_limit: bool = field(repr=False, default=False)
+    bypass_keylength: bool = field(repr=False, default=False)
     
     _BACKEND: Any = default_backend()
     _ALL_CHARS: str = (digits + punctuation + ascii_letters)
@@ -806,7 +782,7 @@ class _BaseEngine(_BasePower):
                     key_length: int=32,
                     exclude: str='',
                     include_all_chars: bool=False,
-                    bypass_length_limit: bool=False,
+                    bypass_keylength: bool=False,
                     repeat: int=None) -> str:
         
         if all((exclude, include_all_chars)):
@@ -829,7 +805,7 @@ class _BaseEngine(_BasePower):
             raise CipherException(
                 "The 'key_length' parameter must have a value greater than zero.\n")
         
-        if not bypass_length_limit and \
+        if not bypass_keylength and \
                 any((key_len < cls._MIN_KEYLENGTH,
                     key_len > cls._MAX_KEYLENGTH)):
             raise CipherException(
@@ -1246,7 +1222,7 @@ class CipherEngine(_BaseEngine):
                         overwrite_file=self.overwrite_file,
                         verbose=self.verbose,
                         export_path=self.export_path,
-                        bypass_length_limit=self.bypass_length_limit,
+                        bypass_keylength=self.bypass_keylength,
                         text=self.text)
         
         self._file = None if not self.file else self._validate_file(self.file)
@@ -1262,7 +1238,7 @@ class CipherEngine(_BaseEngine):
                                 key_length=self.key_length,
                                 exclude=self.exclude_chars,
                                 include_all_chars=self.include_all_chars,
-                                bypass_length_limit=self.bypass_length_limit
+                                bypass_keylength=self.bypass_keylength
                                 )
     
     def _json_serializer(self):
@@ -1342,14 +1318,14 @@ class CipherEngine(_BaseEngine):
             passkey = self._validate_object(__passkey, type_is=str, arg='Passphrase')
             checker = partial(lambda *args: all((*args,)), self._char_checker(passkey))
             checked = checker(len(passkey) >= self._MIN_KEYLENGTH)
-            if self.bypass_length_limit and not checked:
+            if self.bypass_keylength and not checked:
                 # No restrictions apply, except for the exclusion of empty strings.
                 # Strings with a maximum length of one character are permissible.
                 checked = checker(0 < len(passkey) < self._MIN_KEYLENGTH)
-            elif not self.bypass_length_limit and not checked:
+            elif not self.bypass_keylength and not checked:
                 raise CipherException(
                     "For security reasons, the passkey must have a length of at least 32 characters. "
-                    "If a shorter key is desired, you can provide a 'bypass_length_limit' parameter. "
+                    "If a shorter key is desired, you can provide a 'bypass_keylength' parameter. "
                     "Otherwise, the system will raise an error."
                 )
             
@@ -1988,11 +1964,11 @@ def decrypt_file(**kwargs) -> NamedTuple:
     return DecipherEngine(**kwargs).decrypt_file()
 
 def main():
-    key = generate_crypto_key(exclude='punct')
+    key = generate_crypto_key(exclude='digits_punct')
     
     print(key)
     # print(CipherEngine._compiler(punctuation, key, escape_default=False))
-    a = encrypt_text(text="plaintext", passkey='password123', export_passkey=False, verbose=False, gui_passphrase=False, bypass_length_limit=True)
+    a = encrypt_text(text="plaintext", passkey='password123', export_passkey=False, verbose=False, gui_passphrase=False, bypass_keylength=True)
     print(a)
     # print(decrypt_text(ciphertuple=a))
     # print(CipherEngine().cpu_chart)
