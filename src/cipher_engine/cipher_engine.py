@@ -48,7 +48,7 @@ __all__ = (
         'CipherException', 'generate_crypto_key'
         )
 
-__version__ = '0.1.9'
+__version__ = '0.2.2'
 __author__ = 'Yousef Abuzahrieh <yousef.zahrieh17@gmail.com'
 
 def get_logger(*, name: str=__name__,
@@ -122,12 +122,12 @@ class _BaseGeneral(NamedTuple):
     _CFB = 'CFB8'
     _INI = 'ini'
     _JSON = 'json'
+    _MHZ = 'MHz'
+    _GHZ = 'GHz'
     _PRE_ENC = 'encrypted'
     _PRE_DEC = 'decrypted'
     _HASH_TYPE = 'SHA512'
     _ALGO_TYPE = _AES.upper()
-    _MHZ = 'MHz'
-    _GHZ = 'GHz'
     _ALGO_DEFAULT = algorithms.AES
     _HASH_DEFAULT = hashes.SHA512
 
@@ -295,7 +295,7 @@ class _BasePower:
     def _capacity_error(cls, __strings) -> NoReturn:
         raise CipherException(
             f"The specified counts surpasses the computational capacity required for {cls.__name__!r}. "
-            " It is recommended to use a count of 100 <= x <= 1000, considering the specified 'key_length'. "
+            "It is recommended to use a count of 100 <= x <= 1000, considering the specified 'key_length'. "
             f"{__strings}")
     
     @property
@@ -663,21 +663,37 @@ class _BaseEngine(_BasePower):
         - str: The selected character set based on the key to be excluded from the generated passkey.
 
         #### Possible values for __key:
-        >>> 'digits': Includes digits (0-9).
-        >>> 'punct': Includes punctuation characters.
-        >>> 'ascii': Includes ASCII letters (both uppercase and lowercase).
-        >>> 'digits_punct': Includes both digits and punctuation characters.
-        >>> 'ascii_punct': Includes both ASCII letters and punctuation characters.
-        >>> 'digits_ascii': Includes both digits and ASCII letters.
+        - 'digits': Excludes digits (0-9).
+        - 'punct': Excludes punctuation characters.
+        - 'ascii': Excludes ASCII letters (both uppercase and lowercase).
+        - 'digits_punct': Excludes both digits and punctuation characters.
+        - 'ascii_punct': Excludes both ASCII letters and punctuation characters.
+        - 'digits_ascii': Excludes both digits and ASCII letters.
+        - 'digits_ascii_lower': Excludes both digits and lowercase ASCII letters.
+        - 'digits_ascii_upper': Excludes both digits and uppercase ASCII letters.
+        - 'punct_ascii_lower': Excludes both punctuation characters and lowercase ASCII letters.
+        - 'punct_ascii_upper': Excludes both punctuation characters and uppercase ASCII letters.
+        - 'ascii_lower_punct': Excludes both lowercase ASCII letters and punctuation characters.
+        - 'ascii_upper_punct': Excludes both uppercase ASCII letters and punctuation characters.
+        - 'digits_ascii_lower_punct': Excludes digits, lowercase ASCII letters, and punctuation characters.
+        - 'digits_ascii_upper_punct': Excludes digits, uppercase ASCII letters, and punctuation characters.
         """
         all_chars = {
-                    'digits': digits,
-                    'punct': punctuation,
-                    'ascii': ascii_letters,
-                    'digits_punct': digits + punctuation,
-                    'ascii_punct': ascii_letters + punctuation,
-                    'digits_ascii': digits + ascii_letters
-                    }
+                'digits': digits,
+                'punct': punctuation,
+                'ascii': ascii_letters,
+                'digits_punct': digits + punctuation,
+                'ascii_punct': ascii_letters + punctuation,
+                'digits_ascii': digits + ascii_letters,
+                'digits_ascii_lower': digits + ascii_letters.lower(),
+                'digits_ascii_upper': digits + ascii_letters.upper(),
+                'punct_ascii_lower': punctuation + ascii_letters.lower(),
+                'punct_ascii_upper': punctuation + ascii_letters.upper(),
+                'ascii_lower_punct': ascii_letters.lower() + punctuation,
+                'ascii_upper_punct': ascii_letters.upper() + punctuation,
+                'digits_ascii_lower_punct': digits + ascii_letters.lower() + punctuation,
+                'digits_ascii_upper_punct': digits + ascii_letters.upper() + punctuation
+            }
         if return_dict:
             return all_chars
         return all_chars.get(__key)
@@ -706,7 +722,6 @@ class _BaseEngine(_BasePower):
         file = cls._validate_file(__file)
         sha256_hash = hashlib.sha256()
         with open(__file, 'rb') as file:
-            
             for chunk in iter(lambda: file.read(4096), b""):
                 sha256_hash.update(chunk)
         return sha256_hash.hexdigest()
@@ -1075,8 +1090,8 @@ class _BaseEngine(_BasePower):
                         )
             except AttributeError as attr_error:
                 raise CipherException(
-                    f'>>Validation Failed: The following attribute is not predefined. ',
-                    f'>>Ensure that the specified configuration {NamedTuple.__name__!r} is generated from one of the {CipherEngine.__name__!r} encryption processes. ',
+                    f'>>Validation Failed: The following attribute is not predefined. {param}. '
+                    f'>>Ensure that the specified configuration {NamedTuple.__name__!r} is generated from one of the {CipherEngine.__name__!r} encryption processes. '
                     f'>>ERROR: {attr_error}')
         
         else:
@@ -1586,10 +1601,10 @@ class DecipherEngine(_BaseEngine):
             self._algorithm_type = cparser_func(section_key='algorithm_type').split('.')[-1].rstrip(">'")
             self._salt_value = cparser_func(section_key='salt_value')
             self._iv_value = cparser_func(section_key='iv_value')
-            sec_getter = lambda _sec_key: cparser_func(section='CIPHER_INFO', section_key=_sec_key)
-            self._encrypted_text = sec_getter('encrypted_text')
-            self._encrypted_file = sec_getter('encrypted_file')
-            self._decipher_key = sec_getter('decipher_key')
+            sec_getter = lambda sec_key: cparser_func(section='CIPHER_INFO', section_key=sec_key)
+            self._encrypted_text = sec_getter(sec_key='encrypted_text')
+            self._encrypted_file = sec_getter(sec_key='encrypted_file')
+            self._decipher_key = sec_getter(sec_key='decipher_key')
         
         #** For CipherTuple instances.
         if self.ciphertuple:
@@ -1964,12 +1979,12 @@ def decrypt_file(**kwargs) -> NamedTuple:
     return DecipherEngine(**kwargs).decrypt_file()
 
 def main():
-    key = generate_crypto_key(exclude='digits_punct')
+    key = generate_crypto_key(exclude='digits_ascii_upper_punct')
     
     print(key)
     # print(CipherEngine._compiler(punctuation, key, escape_default=False))
-    a = encrypt_text(text="plaintext", passkey='password123', export_passkey=False, verbose=False, gui_passphrase=False, bypass_keylength=True)
-    print(a)
+    # a = encrypt_text(text="plaintext", passkey='password123', export_passkey=False, verbose=False, gui_passphrase=False, bypass_keylength=True)
+    # print(a)
     # print(decrypt_text(ciphertuple=a))
     # print(CipherEngine().cpu_chart)
     # print("\f\v" + whitespace in CipherEngine._ALL_CHARS)

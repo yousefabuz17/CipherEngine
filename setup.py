@@ -5,7 +5,7 @@ with open("README.md", "r", encoding="utf-8") as lg_desc:
 
 setup(
     name="cipher_engine",
-    version="0.2.1",
+    version="0.2.2",
     author="Yousef Abuzahrieh",
     author_email="yousefzahrieh17@gmail.com",
     description="Versatile cryptographic utility designed for secure encryption and decryption operations. \

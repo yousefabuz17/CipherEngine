@@ -1,12 +1,26 @@
 # CipherEngine
+<img src="logo/cipher-engine-logo.jpg" alt="CipherEngine Logo" width="150"/>
 
-`CipherEngine` is a Python library that provides tools for encrypting and decrypting files and text data using symmetric key cryptography. It uses secure algorithms and includes features such as key derivation, salt generation, and file integrity checks.
+[![PyPI version](https://badge.fury.io/py/cipher-engine.svg)](https://badge.fury.io/py/cipher-engine)
+[![Downloads](https://pepy.tech/badge/cipher-engine)](https://pepy.tech/project/cipher-engine)
+[![License](https://img.shields.io/badge/license-Apache-blue.svg)](https://opensource.org/license/apache-2-0/)
+[![Documentation](https://img.shields.io/badge/docs-latest-brightgreen.svg)](https://github.com/yousefabuz17/CipherEngine/blob/main/README.md)
+[![Code Style](https://img.shields.io/badge/code%20style-pep8-blue.svg)](https://www.python.org/dev/peps/pep-0008/)
+
+
+Welcome to `CipherEngine`, a powerful Python library dedicated to symmetric key cryptography. This `README` offers a detailed exploration of the library, highlighting key features, enhanced security measures, and practical usage examples. Please refer to the table of contents below to navigate through the document.
 
 # Table of Contents
-
+- [Requirements](#requirements)
 - [Primary Features](#primary-features)
 - [Enhanced Security Measures](#enhanced-security-measures)
+- [Key Generation](#key-generation)
+    - [All Available Characters](#all-available-characters)
+    - [Character Set Exclusion Options](#character-set-exclusion-options)
+        - [Exclusion Chart](#exclusion-chart)
+        - [Exclusion Examples](#exclusion-examples)
 - [CipherEngine Class](#cipherengine-class)
+    - [Overview](#overview)
     - [Attributes](#attributes)
     - [Methods](#methods)
     - [Example](#example)
@@ -15,46 +29,144 @@
     - [Attributes](#attributes-1)
     - [Methods](#methods-1)
     - [Example](#example-1)
+- [Class Engine Return State](#class-engine-return-state)
 - [Installation](#installation)
 - [Usage Examples](#usage-examples)
-- [Generate a Secure Cryptographic Key](#generate-a-secure-cryptographic-key)
-- [Quickly Encrypt/Decrypt Text With Ease](#quickly-encryptdecrypt-text-with-ease)
-- [Encrypt Text using CipherEngine.encrypt_text](#encrypt-text-using-cipherengineencrypt_text)
-- [Encrypt a file using CipherEngine.encrypt_file](#encrypt-a-file-using-cipherengineencrypt_file)
-- [Requirements](#requirements)
+    - [Generate a Secure Cryptographic Key](#generate-a-secure-cryptographic-key)
+    - [Quickly Encrypt/Decrypt Text With Ease](#quickly-encryptdecrypt-text-with-ease)
+    - [Encrypt Text using CipherEngine.encrypt_text](#encrypt-text-using-cipherengineencrypt_text)
+    - [Encrypt a file using CipherEngine.encrypt_file](#encrypt-a-file-using-cipherengineencrypt_file)
+- [Roadmap](#roadmap)
+    - [Features](#features)
+    - [Progress Table](#progress-table)
+- [Contributors and Feedback](#contributors-and-feedback)
+    - [Contributing](#contributing)
+    - [Feedback](#feedback)
+- [Important Notes](#important-notes)
 - [Risk Disclaimer](#risk-disclaimer)
 - [Conclusion](#conclusion)
+---
+
+# Requirements
+- **`Python`**: 3.10 or above
+  > *This project specifically requires Python 3.10. Compatibility issues have been identified when using Python 3.9 due to the usage of the `kw_only` parameter for dataclasses, which is crucial for this project.*
+
+- **`cryptography`**: ~=41.0.4
+- **`numpy`**: ~=1.26.3
+- **`psutil`**: ~=5.9.7
+- **`pytest`**: ~=7.4.3
+- **`setuptools`**: ~=68.2.2
+---
 
 
-## Primary Features
+# Primary Features
 
-- **File Encryption and Decryption**: Securely encrypt and decrypt files using symmetric key cryptography, incorporating advanced security measures such as PBKDF2 key derivation and unique encryption identifiers.
+- **`Data Encryption and Decryption`**: Securely encrypt and decrypt data (files/strings) using symmetric key cryptography, incorporating advanced security measures.
 
-- **Text Encryption and Decryption**: Effortlessly encrypt and decrypt text data, ensuring confidentiality with robust cryptographic techniques.
+- **`Text Encryption and Decryption`**: Effortlessly encrypt and decrypt text data, ensuring confidentiality with robust cryptographic techniques.
 
-    > **Quick-CipherText** - Rapidly encrypts and decrypts text data while providing essential information for seamless on-the-go operations.
+    > **`quick_(encrypt/decrypt)`** - Rapidly encrypts and decrypts text data while providing essential information for seamless on-the-go operations.
 
-- **Passphrase Generation**: Generate highly secure passphrases with customizable options to strengthen the foundation of your cryptographic keys.
+- **`Passphrase Generation`**: Generate highly secure passphrases with customizable options to strengthen the foundation of your cryptographic keys.
 
-- **Key Derivation**: Implement advanced key derivation functions, including PBKDF2, to enhance the security of your cryptographic keys and protect against brute-force attacks.
+- **`Key Derivation`**: Implement advanced key derivation functions, including PBKDF2, to enhance the security of your cryptographic keys and protect against brute-force attacks.
 
-- **Backup and Restore**: Opt for optional creation of backups for original files before encryption, offering a safety net for data preservation. Efficiently restore files to their original state during the decryption process.
+- **`Backup and Restore`**: Opt for optional creation of backups for original files before encryption, offering a safety net for data preservation. Efficiently restore files to their original state during the decryption process.
 
-- **Export Passphrase**: Export passphrases to separate files for convenient and secure storage, ensuring that sensitive information is handled with the utmost care.
+- **`Export Passphrase`**: Export passphrases to separate files for convenient and secure storage, ensuring that sensitive information is handled with the utmost care.
 
-## Enhanced Security Measures
+# Enhanced Security Measures
 
-The CipherEngine incorporates the following advanced security measures:
+- **`PBKDF2 (Password-Based Key Derivation Function 2)`**: Strengthen cryptographic keys by making key derivation computationally intensive, thwarting potential brute-force attacks.
 
-- **PBKDF2 (Password-Based Key Derivation Function 2)**: Strengthen cryptographic keys by making key derivation computationally intensive, thwarting potential brute-force attacks.
+- **`Unique Encryption Identifiers`**: Introduce a unique identifier during encryption to enhance security and protect against potential vulnerabilities.
 
-- **Unique Encryption Identifiers**: Introduce a unique identifier during encryption to enhance security and protect against potential vulnerabilities.
+- **`Initialization Vectors (IV) and Salts`**: Enhance security further by incorporating Initialization Vectors (IV) and salts. IVs add unpredictability to the encryption process, preventing patterns in ciphertexts, while salts contribute to unique key derivation, preventing rainbow table attacks.
 
-- **Initialization Vectors (IV) and Salts**: Enhance security further by incorporating Initialization Vectors (IV) and salts. IVs add unpredictability to the encryption process, preventing patterns in ciphertexts, while salts contribute to unique key derivation, preventing rainbow table attacks.
+- **`Cipher Feedback (CFB8)`**: Employs the Cipher Feedback (CFB8) mode from the Cipher algorithm, adding an extra layer of security to the encryption process. This mode enhances the unpredictability of ciphertexts, further fortifying the cryptographic operations performed by the CipherEngine.
 
->*The CipherEngine is designed to offer a comprehensive and secure solution for cryptographic operations, leveraging industry-standard techniques to safeguard your sensitive data.*
+>*The `CipherEngine` is designed to offer a comprehensive and secure method for cryptographic operations, leveraging industry-standard techniques to safeguard your sensitive data.*
+---
 
-## CipherEngine Class
+# Key Generation
+When generating cryptographic keys using the `generate_crypto_key` method, you have the flexibility to customize the key based on specific character sets. This allows you to tailor the keys to your security requirements and preferences.
+> *Can also be accessed through any class engines using `_generate_key`*
+
+## All Available Characters
+- `ASCII letters`: abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ
+- `Digits`: 0123456789
+- `Punctuation`: !"#$%&'()*+,-./:;<=>?@[\]^_`{|}~
+- ~~`Whitespace`: '(space)\t\n\r\v\f'~~
+    - ' ' (space), '\t' (tab), '\n' (newline), '\r' (carriage return), '\x0b' (vertical tab), '\x0c' (form feed)
+    > *Please note that `Whitespace` is automatically excluded from all available options, as it can interfere with the encryption process and is not necessary or useful for cryptographic operations.*
+
+## Character Set Exclusion Options
+### Exclusion Chart
+```python
+{
+    'digits': digits
+    'punct': punctuation
+    'ascii': ascii_letters
+    'digits_punct': digits + punctuation,
+    'ascii_punct': ascii_letters + punctuation,
+    'digits_ascii': digits + ascii_letters,
+    'digits_ascii_lower': digits + ascii_letters.lower(),
+    'digits_ascii_upper': digits + ascii_letters.upper(),
+    'punct_ascii_lower': punctuation + ascii_letters.lower(),
+    'punct_ascii_upper': punctuation + ascii_letters.upper(),
+    'ascii_lower_punct': ascii_letters.lower() + punctuation,
+    'ascii_upper_punct': ascii_letters.upper() + punctuation,
+    'digits_ascii_lower_punct': digits + ascii_letters.lower() + punctuation,
+    'digits_ascii_upper_punct': digits + ascii_letters.upper() + punctuation
+}
+```
+
+### Exclusion Examples
+```python
+crypto_key = generate_crypto_key(exclude=<str>)
+crypto_key = (De)CipherEngine._generate_key(exclude=<str>)
+```
+- `digits`: *Excludes digits (0-9).*
+    > ._@->htEqNvSv/_`a.+E-lJ)mzL("#~q
+- `punct`: *Excludes punctuation characters.*
+    > xXLyv16WONtWW1s8ri1lfF8suJzzHqSf
+- `ascii`: *Excludes ASCII letters (both uppercase and lowercase).*
+    > _\$9{92|66!6+)0<69{>},<*[/{_97_'
+- `digits_punct`: *Excludes both digits and punctuation characters.*
+    > NsLkBkXWlQgUQLsVYQeksbWKJqtOmxqZ
+- `ascii_punct`: *Excludes both ASCII letters and punctuation characters.*
+    > 14341403286159451993389011857514
+- `digits_ascii`: *Excludes both digits and ASCII letters.*
+    > *{[\[:=#,{_(-%#:*)](~&.~^@\.~:_@
+- `digits_ascii_lower`: *Excludes both digits and lowercase ASCII letters.*
+    > |UH[E&JF"HIIS#,,-|B#S\)D/+H|_(?\
+
+- `digits_ascii_upper`: *Excludes both digits and uppercase ASCII letters.*
+    > w$=q.`:_&,vvm<'s?++'i\`$o!|d@~(w
+
+- `punct_ascii_lower`: *Excludes both punctuation characters and lowercase ASCII letters.*
+    > UVME559NRTZKT3P7DEHS8ROOPTYA35BF
+
+- `punct_ascii_upper`: *Excludes both punctuation characters and uppercase ASCII letters.*
+    > ck05mdhi9a4csf1f4ejvru7p9kc5xpix
+
+- `ascii_lower_punct`: *Excludes both lowercase ASCII letters and punctuation characters.*
+    > Y2UJIEDBUO2AXD2SAET2QJL7LR6P776N
+
+- `ascii_upper_punct`: *Excludes both uppercase ASCII letters and punctuation characters.*
+    > f1021qygcqbzd6bfaac9ng9nitpehozy
+
+- `digits_ascii_lower_punct`: *Excludes digits, lowercase ASCII letters, and punctuation characters.*
+    > UHSTDQQZWVAHBFLMZYKUXIDXSTTPLQXE
+
+- `digits_ascii_upper_punct`: *Excludes digits, uppercase ASCII letters, and punctuation characters.*
+    > dhwzxoqzubwmrieyerpxrfttfeohacxl
+
+---
+
+# CipherEngine Class
+### Overview
+`CipherEngine` is a comprehensive Python library designed for encrypting and decrypting files and text data using symmetric key cryptography. It employs secure algorithms and encompasses features such as PBKDF2 key derivation, salt and iv generation, encryption header, and file integrity checks.
 
 ### Attributes
 
@@ -62,14 +174,6 @@ The CipherEngine incorporates the following advanced security measures:
 - `key_length`: The length of the cryptographic decipher key (default: 32).
 - `iterations`: The number of iterations for key derivation.
 - `exclude_chars`: Characters to exclude during passphrase generation (default: punctuation).
-    > ***Exclude chars options: Specify one of the following options to exclude from key generation for efficient reference.***
-    - `digits`: Includes digits (0-9).
-    - `punct`: Includes punctuation characters.
-    - `ascii`: Includes ASCII letters (both uppercase and lowercase).
-    - `digits_punct`: Includes both digits and punctuation characters.
-    - `ascii_punct`: Includes both ASCII letters and punctuation characters.
-    - `digits_ascii`: Includes both digits and ASCII letters.
-    
 - `backup_file`: Flag indicating whether to create a backup of the original file (default: True).
 - `export_passkey`: Flag indicating whether to export the passphrase to a separate file (default: True).
 - `include_all_chars`: Flag indicating whether to include all characters during passphrase generation (default: False).
@@ -94,11 +198,11 @@ cipher = CipherEngine(passkey='my_secret_key', iterations=1000)
 cipher.encrypt_file()
 ```
 ---
-## DecipherEngine Class
+# DecipherEngine Class
 
 ### Overview
 
-The `DecipherEngine` class, an extension of the CipherEngine, is dedicated to decrypting data encrypted through the CipherEngine. It seamlessly operates with configuration files generated by the CipherEngine during the encryption process.
+The `DecipherEngine` class, an extension of the CipherEngine, is dedicated to decrypting data encrypted through the CipherEngine. It seamlessly operates with configuration files or NamedTuples generated by the CipherEngine during the encryption process.
 
 ### Attributes
 
@@ -125,9 +229,9 @@ decipher = DecipherEngine(passkey_file='encrypted_file_passkey.ini')
 decipher.decrypt_file()
 ```
 
-### Returns
-> - **Each method returns a NamedTuple instance, providing a convenient way to handle and pass around the encryption results.**
-> - **This NamedTuple can be seamlessly utilized with the decryption methods, eliminating the need for manually specifying each attribute during the decryption process.**
+### Class Engine Return State
+- Each method within the `CipherEngine` and `DecipherEngine` classes returns a `NamedTuple` instance, providing a convenient way to handle and pass around the results of cryptographic operations.
+- This NamedTuple (`ciphertuple`) can be seamlessly utilized within the respective classes, eliminating the need for manual specification of each attribute during subsequent cryptographic operations.
 
 ---
 
@@ -142,9 +246,9 @@ pip install cipher-engine
 
 # Usage Examples
 
-## Import Module
+### Import Module
 ```python
-from cipherengine import *
+from cipher_engine import *
 # __all__ = (
 # 'CipherEngine', 'DecipherEngine',
 # 'encrypt_file', 'decrypt_file',
@@ -154,7 +258,7 @@ from cipherengine import *
 # )
 ```
 
-## Generate a Secure Cryptographic Key
+### Generate a Secure Cryptographic Key
 ```python
 # Generate a cryptographic key using specified parameters
 crypto_key = generate_crypto_key(key_length=int(1e5))
@@ -167,7 +271,7 @@ crypto_key = generate_crypto_key(exclude='digits_punct')
 # Output: wmsjRLFxnVmXJfHGzjVNgWtRogZZQeGs
 ```
 
-## Quickly Encrypt/Decrypt Text With Ease
+### Quickly Encrypt/Decrypt Text With Ease
 ```python
 # Quick encryption of text data using CipherEngine.quick_encrypt
 result_quick_ciphertext = quick_ciphertext(text='Hello, World!', export_passkey=False)
@@ -187,7 +291,7 @@ result_quick_deciphertext = quick_deciphertext(
 quick_deciphertext(ciphertuple=result_quick_ciphertext)
 ```
 
-## Encrypt Text using CipherEngine.encrypt_text
+### Encrypt Text using CipherEngine.encrypt_text
 ```python
 # Encrypt text using CipherEngine.encrypt_text
 result_encrypt_text = encrypt_text(text='Hello, World!', key_length=32, export_path='output')
@@ -205,7 +309,7 @@ result_decrypt_text = decrypt_text(
 decrypt_text(ciphertuple=result_encrypt_text)
 ```
 
-## Encrypt a File using CipherEngine.encrypt_file
+### Encrypt a File using CipherEngine.encrypt_file
 ```python
 # Encrypt a file using CipherEngine.encrypt_file
 result_encrypt_file = encrypt_file(
@@ -223,17 +327,72 @@ result_decrypt_file = decrypt_file(
 # DecipherTuple(decrypted_file=PosixPath('test.aes'), hash_value='5c0c10f62a2798b8f4f2cbb3d677fc9330d87250d3a1b27830ab050ba21c87ab')
 ```
 
-# Requirements
-- **Python**: 3.10 or above
-  - *Note: This project specifically requires Python 3.10. Compatibility issues have been identified when using Python 3.9 due to the usage of the kw_only parameter for dataclasses, which is crucial for this project.*
+---
+# Roadmap
+## Features
+- **`Algorithm Selection`**: Empower users with the ability to choose their preferred encryption algorithm, tailoring the cryptographic process to their specific security preferences.
+- **`Personal Unique Encryption Identifier`**: Provide users with the option to specify a personalized encryption header, allowing them to define a unique identifier according to their preferences, rather than relying on the default setting.
+- **`Performance Optimization`**: Focus on optimizing performance to reduce computational overhead, particularly during encryption and decryption processes with higher iteration counts. These enhancements aim to streamline and expedite cryptographic operations for improved efficiency.
+> *This project is continuously evolving, and these features are anticipated to be implemented in future releases*
 
-- **cryptography**: ~=41.0.4
-- **numpy**: ~=1.26.3
-- **psutil**: ~=5.9.7
-- **pytest**: ~=7.4.3
-- **setuptools**: ~=68.2.2
+## Progress Table
+- [ ] Algorithm Selection
+- [ ] Personal Unique Encryption Identifier
+- [ ] Performance Optimization
 
-## Risk Disclaimer
+>*The forthcoming features are crafted to enhance user flexibility and customization within the class engines, offering a personalized and tailored experience to accommodate diverse encryption needs. This tool prioritizes granting users autonomy over their encryption tools, guaranteeing effortless usage.*
+
+---
+
+# Contributors and Feedback
+
+The `CipherEngine` project welcomes contributions from the community to enhance its features and reliability. If you are interested in contributing, please follow the guidelines below:
+
+## Contributing
+
+| Step | Action                                                                                    |
+|------|-------------------------------------------------------------------------------------------|
+| 1.   | Fork the repository on [GitHub](https://github.com/yousefabuz17/cipherengine) and clone it to your local machine.                                      |
+| 2.   | Create a new branch for your feature or bug fix: `git checkout -b feature/your-feature` or `git checkout -b bugfix/your-bug-fix`.                          |
+| 3.   | Make your modifications and ensure that the code follows the project's coding standards.    |
+| 4.   | Test your changes thoroughly to ensure they do not introduce any issues.                     |
+| 5.   | Commit your changes with clear and concise messages: `git commit -m "Your informative commit message"`.                                               |
+| 6.   | Push your branch to your fork on GitHub: `git push origin feature/your-feature`.             |
+| 7.   | Open a pull request on the [main repository](https://github.com/yousefabuz17/cipherengine) with a detailed description of your changes.                |
+
+## Feedback
+
+Feedback is crucial for the improvement of the `CipherEngine` project. If you encounter any issues, have suggestions, or want to share your experience, please consider the following channels:
+
+1. **GitHub Issues**: Open an issue on the [GitHub repository](https://github.com/yousefabuz17/cipherengine) to report bugs or suggest enhancements.
+
+2. **Contact**: Reach out to the project maintainer via the following:
+    - [Discord](https://discord.com/users/581590351165259793)
+    - [Gmail](yousefzahrieh17@gmail.com)
+
+> *Your feedback and contributions play a significant role in making the `CipherEngine` project more robust and valuable for the community. Thank you for being part of this endeavor!*
+
+---
+# Important Notes
+
+1. **Maximum Iterations and Key Length:**
+   - The maximum capacity for the number of iterations in encryption cycles for PBKDF2 and the key length is set to 1e8 (100 million).
+        > *Caution is advised when utilizing this feature, as it may demand significant computational resources despite the code's efficiency.*
+
+2. **Beta Release Status:**
+   - This project is currently in beta release, demonstrating efficient functionality and consistent success in all conducted tests (pytest).
+   - A comprehensive algorithm to guarantee the non-existence of specific files with default or specified names has not been extensively developed. This pertains to both encryption and decryption processes, contingent on parameters such as overwrite_file and file_name.
+   - The verification of specified data for all methods incorporates an encryption identifier checking tool has only been implemented for `encrypt/decrypt` files at the moment.
+
+3. **Critical Considerations for Optimal Usage:**
+    - After extensive testing and experimentation, this project can prove to be an invaluable tool when certain precautions are observed:
+        - Properly storing the encrypted data's passkey files.
+        - Refraining from making alterations on any files, including the passkey file, which is vital for the integrity of the encryption process.
+            - It is important to note that encrypting the same file multiple times and decrypting it based on the number of times was achieved. However, it is pertinent to highlight that a bypass method to do so will not be implemented. It is essential to recognize that such practices may not enhance the security of the encryption and could potentially lead to severe data loss if not used correctly, particularly when employing identical encryption modes for relevant decryption processes.
+> *In the event that an encryption identifier is detected at the beginning of the encrypted file during an encryption attempt, an error will be raised prior to further processing.*
+---
+
+# Risk Disclaimer
 
 Ensuring the proper and secure handling of data is of paramount importance when employing the `CipherEngine` library. To minimize the risk of potential data loss, consider the following guidelines:
 
@@ -243,8 +402,10 @@ Ensuring the proper and secure handling of data is of paramount importance when 
 
 - **USE AT YOUR OWN RISK**: The author of the `CipherEngine` library holds no responsibility for any data loss that may occur during the usage of the library. Users are advised to exercise caution, adhere to best practices, and implement proper backup procedures to mitigate potential risks.
 
-Exercise responsibility and vigilance in your usage of the library, keeping these considerations in mind. Understand that while the `CipherEngine` offers powerful encryption and decryption capabilities, it is not exempt from potential risks associated with the broader landscape of data security.
+> *Exercise responsibility and vigilance in your usage of the library, keeping these considerations in mind. Understand that while the `CipherEngine` offers powerful encryption and decryption capabilities, it is not exempt from potential risks associated with the broader landscape of data security.*
 
-## Conclusion
+---
+
+# Conclusion
 
 In summary, the `CipherEngine` project presents a versatile and robust framework for symmetric key cryptography. Discover the available classes and methods to seamlessly incorporate secure encryption and decryption functionality into your Python projects.
