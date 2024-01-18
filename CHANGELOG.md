@@ -1,5 +1,15 @@
 # Change-log
 
+## Version 0.3.0 (2024-01-18)
+- **Comprehensive Code Restructuring**
+  - Completely restructured the entire codebase to enhance readability and maintainability.
+  - Transitioned from using hazardous aglorthms to adopting a streamlined approach with multiple `Fernet` keys using `MultiFernet` for enhanced performance and heightened security.
+
+- **Upcoming Feature Enhancements:**
+  - No new features are currently scheduled for release.
+  - Ongoing efforts to enhance the codebase and documentation.
+---
+
 ## Version 0.2.3 (2024-01-15)
 - **Continuous Documentation Improvements:**
   - Ongoing efforts to enhance user experience by continuously updating and improving documentation for increased usability.
