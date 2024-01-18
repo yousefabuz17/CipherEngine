@@ -15,6 +15,5 @@ exclude = '''
     | \.venv
     | build
     | dist
-    | tests
 )/
 '''

@@ -7,7 +7,7 @@
 [![Documentation](https://img.shields.io/badge/docs-latest-brightgreen.svg)](https://github.com/yousefabuz17/CipherEngine/blob/main/README.md)
 [![Code Style](https://img.shields.io/badge/code%20style-pep8-blue.svg)](https://www.python.org/dev/peps/pep-0008/)
 ---
-Welcome to `CipherEngine`, a powerful Python library dedicated to symmetric key cryptography. This documentation offers a detailed exploration of the library, highlighting key features, enhanced security measures, and practical usage examples. Please refer to the table of contents below to navigate through the documentation.
+Welcome to `CipherEngine`, a powerful Python library dedicated to symmetric key cryptography. This documentation offers a detailed exploration of the library, highlighting key features, and practical usage examples. Please refer to the table of contents below to navigate through the documentation.
 
 ---
 
@@ -22,10 +22,8 @@ Welcome to `CipherEngine`, a powerful Python library dedicated to symmetric key 
     - [Export Passkey Configuration File](#export-passkey-configuration-file)
     - [Data Integrity Assurance Mechanism](#data-integrity-assurance-mechanism)
 - [Enhanced Security Measures](#enhanced-security-measures)
-    - [PBKDF2](#pbkdf2)
     - [Unique Encryption Identifiers](#unique-encryption-identifiers)
-    - [Salt and IV Generation](#salt-and-iv-generation)
-    - [Cipher Feedback](#cipher-feedback)
+    - [Multiple Fernet Keys wit MultiFernet](#multiple-fernet-keys-wit-multifernet)
 - [Key Generation](#key-generation)
     - [Overview](#overview)
     - [Code Base](#code-base)
@@ -60,7 +58,7 @@ Welcome to `CipherEngine`, a powerful Python library dedicated to symmetric key 
     - [Contributing](#contributing)
     - [Feedback](#feedback)
 - [Important Notes](#important-notes)
-    - [Maximum Iterations and Key Length](#maximum-iterations-and-key-length)
+    - [Maximum Number of Fernet Keys](#maximum-number-of-fernet-keys)
     - [Beta Release Status](#beta-release-status)
     - [Critical Considerations for Optimal Usage](#critical-considerations-for-optimal-usage)
 - [Risk Disclaimer](#risk-disclaimer)
@@ -96,7 +94,7 @@ pip install -r requirements.txt
 ### Text Encryption and Decryption
 - Effortlessly encrypt and decrypt text data, ensuring confidentiality with robust cryptographic techniques.
 
-    > **`<class-engine>.quick_(en/de)crypt`** - Rapidly encrypts and decrypts text data while providing essential information for seamless on-the-go operations.
+    > **`<class-engine>.(en/de)crypt_text`** - Rapidly encrypts and decrypts text data while providing essential information for seamless on-the-go operations.
 ---
 
 ### Passphrase Generation and Key Derivation
@@ -142,29 +140,17 @@ pip install -r requirements.txt
 # Enhanced Security Measures
 ## Overview
 The `CipherEngine` library incorporates a wide range of security measures to ensure the confidentiality and integrity of your data. These measures include:
-### PBKDF2
-- ***`PBKDF2 (Password-Based Key Derivation Function 2)`** is a key derivation function that employs a pseudorandom function to derive cryptographic keys from a password. It is a widely used key derivation function, offering robust security and protection against brute-force attacks.*
-- Strengthen cryptographic keys by making key derivation computationally intensive, thwarting potential brute-force attacks.
 
 ### Unique Encryption Identifiers
-- Introduce a unique `encryption_header` during encryption to enhance security and protect against potential vulnerabilities.
+- Introduce a unique `identifiers` during encryption to enhance security and protect against potential vulnerabilities.
 - This unique identifier that is generated during the encryption process and is appended to the beginning of the encrypted file. It is used to verify the integrity of the encrypted file during the decryption process, ensuring that the file has not been tampered with.
-- The default `encryption_header` is as follows:
+- The default `identifiers` is as follows:
     - *-----BEGIN CIPHERENGINE CRYPTOGRAPHIC ENCRYPTED KEY-----*
     - *-----END CIPHERENGINE CRYPTOGRAPHIC ENCRYPTED KEY-----*
 
-### Salt and IV Generation
-- Strengthen security measures by integrating Initialization Vectors (IV) and salts. IVs introduce unpredictability into the encryption process, thwarting patterns in ciphertexts, while salts aid in unique key derivation, mitigating the risk of rainbow table attacks.
-    > Utilizes with `secrets.token_bytes` method to generate cryptographically secure random numbers.
-    ```python
-    @staticmethod
-    def _gen_random(__size: int=16) -> bytes:
-        return secrets.token_bytes(__size)
-    ```
-
-### Cipher Feedback
-- Utilizes the `Cipher` Feedback (`CFB8`) mode from the Cipher algorithm, incorporating an additional layer of security into the encryption process.
-- The mode leverages `default_backend()` for `Cipher`, ensuring robust cryptographic operations within the CipherEngine. This choice enhances the unpredictability of ciphertexts, reinforcing the overall security of the encryption mechanism.
+### Multiple Fernet Keys wit MultiFernet
+- **`MultiFernet`** is a class that allows for the combination of multiple `Fernet` keys into a single key. This class is used to generate a unique key for each encryption process, ensuring that the same key is not used for multiple encryption processes.
+- **`Fernet`** is a class that offers symmetric encryption based on the AES algorithm in CBC mode with a 128-bit key for encryption and HMAC for authentication. It is used to encrypt and decrypt data, ensuring confidentiality and integrity.
 
 >*The `CipherEngine` is designed to offer a comprehensive and on-the-go secure method for cryptographic operations, leveraging industry-standard techniques to safeguard your sensitive data.*
 ---
@@ -188,10 +174,11 @@ def _generate_key(cls, *,
                   exclude: str = '', # Defaults to punctuation
                   include_all_chars: bool = False,
                   bypass_keylength: bool = False,
-                  repeat: int = None) -> str:
+                  repeat: int = None,
+                  urlsafe_encoding: bool = None) -> str:
 ```
 
-- **Method Signature**: `_generate_key` is a class method, allowing it to be accessed through any class engines. It takes parameters such as `key_length`, `exclude`, `include_all_chars`, `bypass_keylength`, and `repeat`, providing customization options for key generation.
+- **Method Signature**: `_generate_key` is a class method, allowing it to be accessed through any class engines. It takes parameters such as `key_length`, `exclude`, `include_all_chars`, `bypass_keylength`, `repeat`, and `urlsafe_encoding` providing customization options for key generation.
 ---
 
 ```python
@@ -339,35 +326,27 @@ crypto_key = (De)CipherEngine._generate_key(exclude=<str>)
 
 # CipherEngine Class
 ## Overview
-`CipherEngine` is a comprehensive Python library designed for encrypting and decrypting files and text data using symmetric key cryptography. It employs secure algorithms and encompasses features such as PBKDF2 key derivation, salt and iv generation, encryption header, and file integrity checks.
+`CipherEngine` is a comprehensive Python library designed for encrypting and decrypting files and text data using symmetric key cryptography. It employs secure algorithms and encompasses features `Fernet` and `MultiFernet`, encryption headers, and file/text integrity checks.
 
 ## Attributes
 
 - `passkey`: The passphrase or key used for encryption (optional).
 - `key_length`: The length of the cryptographic decipher key (default: 32).
-- `iterations`: The number of iterations for key derivation.
 - `exclude_chars`: Characters to exclude during passphrase generation (default: punctuation).
 - `backup_file`: Flag indicating whether to create a backup of the original file (default: True).
+- `num_of_keys`: The number of cryptographic keys to be generated (default: 5).
 - `export_passkey`: Flag indicating whether to export the passphrase to a separate file (default: True).
 - `include_all_chars`: Flag indicating whether to include all characters during passphrase generation (default: False).
-- `min_power`: Flag indicating whether to use the minimum power for key derivation (default: False).
-- `max_power`: Flag indicating whether to use the maximum power for key derivation (default: False).
-- `hash_type`: The hash type used in encryption.
-- `algorithm_type`: The type of algorithm used in encryption.
 - `serializer`: The type of serialization for exporting the passkey file ('json' or 'ini').
-- `gui_passphrase`: Flag indicating whether to use a GUI for passphrase input (default: False).
-- `bypass_keylength`: Flag indicating whether to bypass the minimum key length requirement (default: False).
+---
 
 ## Methods
-
 - `encrypt_file()`: Encrypts a specified file.
 - `encrypt_text()`: Encrypts a specified text.
-- `quick_encrypt()`: Quickly encrypts text data and exports necessary information on-the-go.
-    > **Back-bone for quick_ciphertext**
 
 ## Example
 ```python
-cipher = CipherEngine(passkey='my_secret_key', iterations=1000)
+cipher = CipherEngine(passkey='my_secret_key', num_of_keys=50)
 cipher.encrypt_file()
 ```
 ---
@@ -380,12 +359,8 @@ The `DecipherEngine` class, an extension of the CipherEngine, is dedicated to de
 ## Attributes
 
 - `ciphertuple` (NamedTuple): A NamedTuple containing details generated during the quick encryption process. It includes information such as the algorithm type, passkey, encrypted text, hash type, hash value, CPU power, original text, and salt value.
-- `text` (Any | None): The encrypted text to be decrypted. This parameter represents the ciphertext obtained from the encryption process.
-- `decipher_key` (Any | None): The decryption passphrase or key required to decrypt the encrypted text. It is crucial for the successful decryption of the provided ciphertext.
-- `hash_value` (Any | None): The hash value of the original data. This value is used for integrity checking during the decryption process. It ensures that the decrypted text matches the original data, providing data integrity verification.
 - `passkey_file`: str | Path: The path to the file containing the encryption details.
 - `overwrite_file`: bool | None: Flag indicating whether to overwrite the original file during decryption (default: False).
-- `verbose`: bool | None: Flag indicating whether to print verbose messages (default: False).
 
 
 ## Methods
@@ -416,7 +391,6 @@ from cipher_engine import *
 # 'CipherEngine', 'DecipherEngine',
 # 'encrypt_file', 'decrypt_file',
 # 'encrypt_text', 'decrypt_text',
-# 'quick_ciphertext', 'quick_deciphertext',
 # 'CipherException', 'generate_crypto_key',
 # )
 ```
@@ -435,35 +409,12 @@ crypto_key = generate_crypto_key(exclude='digits_punct')
 ```
 ---
 
-### Quickly Encrypt Text With Ease
-```python
-# Quick encryption of text data using CipherEngine.quick_encrypt
-result_quick_ciphertext = quick_ciphertext(text='Hello, World!', export_passkey=False)
-# Output: (NamedTuple)
-# CipherTuple(algorithm_type='AES', decipher_key='546d746a556d746965555a464e6b4a5256553568563035584e466c4D62553172635735536355316e4D456f3d', encrypted_text='-----BEGIN CIPHERENGINE CRYPTOGRAPHIC ENCRYPTED KEY-----gAAAAABlnW67n3zkDLzoLzpTtpOVdrzKwXI5qNsqXOV8bFL34sYekvRwxAH4WciesqC3UPUBB8H7Gklm5GQdV12ZzElZrCEtEg==', hash_type='SHA512', hash_value='dffd6021bb2bd5b0af676290809ec3a53191dd81c7f70a4b28688a362182986f', iterations=139239, iv_value=None, original_text='Hello, World!', salt_value=None)
-```
----
-### Quickly Decrypt Text With Ease
-```python
-result_quick_deciphertext = quick_deciphertext(ciphertuple=result_quick_ciphertext)
-# Output: (NamedTuple)
-# DecipherTuple(decrypted_text='Hello, World!', hash_value='dffd6021bb2bd5b0af676290809ec3a53191dd81c7f70a4b28688a362182986f')
-
-# Can also provide the attributes manually.
-result_quick_deciphertext = quick_deciphertext(
-    text=result_quick_ciphertext.encrypted_text,
-    decipher_key='my_secret_key',
-    hash_value='...'
-)
-```
----
-
 ### Encrypt Text using encrypt_text
 ```python
 # Encrypt text using CipherEngine.encrypt_text
-result_encrypt_text = encrypt_text(text='Hello, World!', key_length=32, export_path='output')
+result_encrypt_text = encrypt_text(text='Hello, World!', num_of_keys=20, export_path='output')
 # Output: (NamedTuple)
-# CipherTuple(algorithm_type='AES', decipher_key='4p8keHiYD5snme5DVUU8UuxKY2A9aFTc', encrypted_text='QKZrhffcL1TWS2J2fg==', hash_type='SHA512', hash_value='dffd6021bb2bd5b0af676290809ec3a53191dd81c7f70a4b28688a362182986f', iterations=139239, iv_value='bbaf9031f11a2a7ac1a8e6384d73a874', original_text='Hello, World!', salt_value='ad12ab5e72028b16a77e03a0d4f7fce0')
+# CipherTuple(decipher_keys=('SXUyTWl3ZG90bXhvbWxsMU16ZUtIY3Jwc1o4eG9RZkY=', 'cm9xeWtBWmRBb0g2MFlQZEtldWhSaWpsc0hCUjRpeTE=', 'cUxqbTZxbUFDVHVBRkNMUlhscXVzMlRtemlXelJKSFo=', 'RFFVOTV5RktackM3TXhDZ3RQRlRKOW9rak9SZGtwWDE=', 'c3hoSmFIbW1tTERUZGZoSmVGMmxUUE5zOUFiVnlUVE4='), encrypted_text='-----BEGIN CIPHERENGINE CRYPTOGRAPHIC ENCRYPTED KEY-----gAAAAABlqMSYIYn3QmhFpOyDTK8NGXJ-yhe7_ovNW62kK5TuRwtIiEXqh47bG9Rz6IWu85xwtase1L4-CHaQwKQbtBpjuI5i1w==-----END CIPHERENGINE CRYPTOGRAPHIC ENCRYPTED KEY-----', fernets=[<fernets>...], id1='-----BEGIN CIPHERENGINE CRYPTOGRAPHIC ENCRYPTED KEY-----', id2='-----END CIPHERENGINE CRYPTOGRAPHIC ENCRYPTED KEY-----', original_text='Hello, World!'
 ```
 ---
 
@@ -487,11 +438,10 @@ result_decrypt_text = decrypt_text(
 # Encrypt a file using CipherEngine.encrypt_file
 result_encrypt_file = encrypt_file(
     file='test.txt',
-    passkey=crypto_key,
-    iterations=int(1e6),
+    overwrite_file=True,
     export_path='output')
 # Output: (NamedTuple)
-# CipherTuple(algorithm_type='AES', decipher_key='J]TTE~:vGzQ]E*?i;0br&!0,tY+zxSN^', encrypted_file='test.aes', hash_type='SHA512', hash_value='01e675506785122a5055d79a9e8fcb919c1b7838bd1d1209cd42ac67730d1f90', iterations=69619, iv_value='b26516ae7a074299bed53bbb92ebc34f', original_file='test.aes', salt_value='8cd661ff966f42fc8174623ff51e8bdd')
+# CipherTuple(decipher_keys=('SXUyTWl3ZG90bXhvbWxsMU16ZUtIY3Jwc1o4eG9RZkY=', 'cm9xeWtBWmRBb0g2MFlQZEtldWhSaWpsc0hCUjRpeTE=', 'cUxqbTZxbUFDVHVBRkNMUlhscXVzMlRtemlXelJKSFo=', 'RFFVOTV5RktackM3TXhDZ3RQRlRKOW9rak9SZGtwWDE=', 'c3hoSmFIbW1tTERUZGZoSmVGMmxUUE5zOUFiVnlUVE4='), encrypted_file='test.aes', fernets=[<fernets>...], id1='-----BEGIN CIPHERENGINE CRYPTOGRAPHIC ENCRYPTED KEY-----', id2='-----END CIPHERENGINE CRYPTOGRAPHIC ENCRYPTED KEY-----', original_file='test.txt'
 ```
 ---
 
@@ -514,17 +464,16 @@ result_decrypt_file = decrypt_file(
 
 # Roadmap
 ## Upcoming Features
-- **`Algorithm Selection`**: Empower users with the ability to choose their preferred encryption algorithm, tailoring the cryptographic process to their specific security preferences.
 - **`Personal Unique Encryption Identifier`**: Provide users with the option to specify a personalized encryption header, allowing them to define a unique identifier according to their preferences, rather than relying on the default setting.
 - **`Performance Optimization`**: Focus on optimizing performance to reduce computational overhead, particularly during encryption and decryption processes with higher iteration counts. These enhancements aim to streamline and expedite cryptographic operations for improved efficiency.
 - **`CLI-Implementation`**: Integrate all cipher engine methods and features into a comprehensive CLI tool, allowing users to seamlessly encrypt and decrypt data from the command line.
 > *This project is continuously evolving, and these features are anticipated to be implemented in future releases*
 
 ## Progress Table
-- [ ] Algorithm Selection
-- [ ] Personal Unique Encryption Identifier
-- [ ] Performance Optimization
+- [x] Personal Unique Encryption Identifier
+- [x] Performance Optimization
 - [x] CLI-Implementation
+
 
 >*The forthcoming features are crafted to enhance user flexibility and customization within the class engines, offering a personalized and tailored experience to accommodate diverse encryption needs. This tool prioritizes granting users autonomy over their encryption tools, guaranteeing effortless usage.*
 
@@ -560,9 +509,9 @@ Feedback is crucial for the improvement of the `CipherEngine` project. If you en
 
 ---
 # Important Notes
-## Maximum Iterations and Key Length
-   - The maximum capacity for the number of iterations in encryption cycles for PBKDF2 and the key length is set to 1e8 (100 million).
-        > *Caution is advised when utilizing this feature, as it may demand significant computational resources despite the code's efficiency.*
+## Maximum Number of Fernet Keys
+- The maximum number of Fernet keys that can be generated is unrestristed. However, it is important to note that the number of keys generated is directly proportional to the time required for encryption and decryption processes. Therefore, it is recommended to generate a reasonable number of keys to ensure optimal performance.
+> *Caution is advised when utilizing this feature, as it may demand significant computational resources despite the code's efficiency.*
 ---
 
 ## Beta Release Status
