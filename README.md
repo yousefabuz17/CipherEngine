@@ -20,6 +20,11 @@ Welcome to `CipherEngine`, a powerful Python library dedicated to symmetric key 
     - [Passphrase Generation and Key Derivation](#passphrase-generation-and-key-derivation)
     - [Backup Management](#backup-management)
     - [Export Passkey Configuration File](#export-passkey-configuration-file)
+        - [Quick File Encryption](#quick-file-encryption)
+        - [Quick Text Encryption](#quick-text-encryption)
+        - [Basic File Encryption](#basic-file-encryption)
+        - [Basic Text Encryption](#basic-text-encryption)
+        - [AES Text Encryption](#aes-text-encryption)
     - [Data Integrity Assurance Mechanism](#data-integrity-assurance-mechanism)
 - [Enhanced Security Measures](#enhanced-security-measures)
     - [Unique Encryption Identifiers](#unique-encryption-identifiers)
@@ -45,11 +50,14 @@ Welcome to `CipherEngine`, a powerful Python library dedicated to symmetric key 
     - [CipherTuple](#ciphertuple)
 - [Usage Examples](#usage-examples)
     - [Generate a Secure Cryptographic Key](#generate-a-secure-cryptographic-key)
-    - [Quickly Encrypt/Decrypt Text With Ease](#quickly-encryptdecrypt-text-with-ease)
-    - [Encrypt Text using CipherEngine.encrypt_text](#encrypt-text-using-cipherengineencrypt_text)
-    - [Decrypt Text using DecipherEngine.decrypt_text](#decrypt-text-using-decrypt_text)
-    - [Encrypt a File using CipherEngine.encrypt_file](#encrypt-a-file-using-encrypt_file)
-    - [Decrypt a File using DecipherEngine.decrypt_file](#decrypt-a-file-using-decrypt_file)
+    - [Encrypt Text using encrypt_text](#encrypt-text-using-encrypt_text)
+    - [Decrypt Text using decrypt_text](#decrypt-text-using-decrypt_text)
+    - [Encrypt a File using encrypt_file](#encrypt-a-file-using-encrypt_file)
+    - [Decrypt a File using decrypt_file](#decrypt-a-file-using-decrypt_file)
+    - [Quickly Encrypt Files using quick_encrypt](#quickly-encrypt-files-using-quick_encrypt)
+    - [Quickly Decrypt Files using quick_decrypt](#quickly-decrypt-files-using-quick_decrypt)
+    - [Quickly Encrypt Text using quick_encrypt](#quickly-encrypt-text-using-quick_encrypt)
+    - [Quickly Decrypt Text using quick_decrypt](#quickly-decrypt-text-using-quick_decrypt)
 - [Command-Line Interface (CLI)](#command-line-interface-cli)
 - [Roadmap](#roadmap)
     - [Upcoming Features](#upcoming-features)
@@ -69,6 +77,7 @@ Welcome to `CipherEngine`, a powerful Python library dedicated to symmetric key 
 # Requirements
 - #### **`Python`**: ~=3.10
 - #### **`cryptography`**: ~=41.0.4
+- #### **`8pycryptodome`**: ~=3.20.0
 - #### **`numpy`**: ~=1.26.3
 - #### **`psutil`**: ~=5.9.7
 - #### **`pytest`**: ~=7.4.3
@@ -87,50 +96,149 @@ pip install -r requirements.txt
 ---
 
 # Primary Features
-### Data Encryption and Decryption
+## Data Encryption and Decryption
 - Securely encrypt and decrypt data (files/strings) using symmetric key cryptography, incorporating advanced security measures.
 ---
 
-### Text Encryption and Decryption
+## Text Encryption and Decryption
 - Effortlessly encrypt and decrypt text data, ensuring confidentiality with robust cryptographic techniques.
 
     > **`<class-engine>.(en/de)crypt_text`** - Rapidly encrypts and decrypts text data while providing essential information for seamless on-the-go operations.
 ---
 
-### Passphrase Generation and Key Derivation
+## Passphrase Generation and Key Derivation
 - Generate highly secure passphrases with customizable options to strengthen the foundation of your cryptographic keys.
 - Utilizes advanced key derivation functions, including PBKDF2, to enhance the security of your cryptographic keys and protect against brute-force attacks.
     > *Refer to [Key Generation](#key-generation) for additional details.*
 ---
 
-### Backup Management
+## Backup Management
 - Opt for optional creation of backups for original files before encryption, offering a safety net for data preservation.
 - Efficiently restore files to their original state during the decryption process if `overwrite_file` parameter is set to True.
 ---
 
-### Export Passkey Configuration File
+## Export Passkey Configuration File
 - Facilitates the exportation of the passkey configuration file into a distinct file, ensuring that sensitive information is handled with the utmost care.
+- Offers the flexibility to choose any serialization formats for the exported passkey file.
+    > *Default serialization is .cfg*
+- The exported passkey file contains essential cryptographic details, including the passkey, hash value, and encryption identifiers, ensuring the secure management of cryptographic operations.
+- The exported passkey file can be used for subsequent cryptographic operations, offering a convenient means to manage and transmit cryptographic details.
+- The file can be easily shared with authorized personnel to facilitate secure decryption operations.
+- The following encryption details are included in the exported passkey file:
+    - `original_file`: The original file to be encrypted.
+    - `encrypted_file`: The encrypted file.
+    - `original_text`: The original text to be encrypted.
+    - `encrypted_text`: The encrypted text.
+    - `decipher_keys`: The Fernet keys used for decryption.
+    - `(file_)hash_value`: The cryptographic hash value of the data.
+    - `id1` and `id2`: The unique encryption identifiers.
+    - `iterations`: The number of iterations for key derivation.
+    - `passkey`: The passphrase used for encryption.
+    - `r_and_p`: The number of rounds and parallelism for key derivation.
+    - `salt_bytes_size`: The size of the salt bytes.
+    - `salt_values`: The salt values used for key derivation.
+    - `aes_iv`: The initialization vector for AES encryption.
+    - `aes_passkey`: The passphrase used for AES encryption.
 ---
 
+### Quick File Encryption
+```
+[CIPHER_INFO]
+original_file = /Python/Projects/CipherEngine/tests/test_files/test_quick_engines.txt
+encrypted_file = /Python/Projects/CipherEngine/tests/test_files/test_quick_engines.txt
+
+[SECURITY_PARAMS]
+hash_value = db740f4d0a400f6320b9af9efc30204c96b3b605ec68a41bb95efab93d755b1a882e1ddced0f48190153bf694fc43829ea58754ade52905ba17ae9ea78e5433f
+passkey = ('quick_password', 'NjBjNGNiMjIzYjZkNDE2YWVlNTE0OGRhYzdhMjk5MjI=')
+
+```
+
+### Quick Text Encryption
+```
+[CIPHER_INFO]
+original_text = testing quick engines.
+encrypted_text = gAAAAABlwa-GqjyR5v1B2g1ukvlLM_aenXrLqeuyeRhVsBxjUtvqIsx6IMD7O-HmDvnvBOC4Z0nZJlS2kXaQX3vTqWjO53FT4_DyPzvW44o68RoJmCsC9j0=
+
+[SECURITY_PARAMS]
+hash_value = e77579463f45f559ca59f1ab19fdd62afd3fc9e261a2badd6e6a3c830df9e94468186407cbbdef4cae69941c16050e8dee7cc7425c4e5c2f5aec85033dca9030
+passkey = ('quick_password', 'NjBjNGNiMjIzYjZkNDE2YWVlNTE0OGRhYzdhMjk5MjI=')
+
+```
+
+### Basic File Encryption
+```
+[CIPHER_INFO]
+original_file = /Python/Projects/CipherEngine/tests/test_files/test_unencrypted_file.txt
+encrypted_file = /Python/Projects/CipherEngine/tests/test_files/encrypted_test_unencrypted_file.aes
+
+[SECURITY_PARAMS]
+file_hash_value = 7be22ca40f8ebd9495e53d7951aaa0377a63239acfd071f0eaef34a1e4f7dc8879928c198b4c806ac5bcd93e6b67d6cba995b31fc4851b7eadc59682712f1acd
+decipher_keys = ('500H3iVB-9YQVthE4yNaOGPG6KsreJw7RVYP0z74TfU=', 'fh4VSiKW8M8NlqU8Ty0Ba_WJakMNZdPlj9Bl0cuXU4c=')
+hash_value = 7be22ca40f8ebd9495e53d7951aaa0377a63239acfd071f0eaef34a1e4f7dc8879928c198b4c806ac5bcd93e6b67d6cba995b31fc4851b7eadc59682712f1acd
+id1 = -----BEGIN CIPHERENGINE ENCRYPTED KEY-----
+id2 = -----END CIPHERENGINE ENCRYPTED KEY-----
+iterations = 1024
+passkey = ('cg284LfecTpV1cnK6kzz2ieIqZlHbADZ', '593263794f44524d5a6d566a564842574d574e75537a5a72656e6f796157564a6356707353474a4252466f3d')
+r_and_p = (8, 1)
+salt_bytes_size = 32
+salt_values = ('732c5e2ea527a51e62adcddaac8cecb28befdf1e54f4919a2a8515f308dee97f', '732c5e2ea527a51e62adcddaac8cecb28befdf1e54f4919a2a8515f308dee97f')
+```
+
+### Basic Text Encryption
+```
+[CIPHER_INFO]
+original_text = plaintext
+encrypted_text = -----BEGIN CIPHERENGINE ENCRYPTED KEY-----gAAAAABlwVYhwuPX4KfRxjlN8a-_CQ-07mKvcB8pkUcZZNxD9BvBg0gIDsHtzYo5wq0aDGNba2X20sEzjUjeoZZyRE6_yuDDoQ==-----END CIPHERENGINE ENCRYPTED KEY-----
+
+[SECURITY_PARAMS]
+decipher_keys = ('zugxkADC_5-JGcXNX4gcK54bAjqWf3oCA6HuaEPolFY=', 'MXgml8ajCw_Lv_cmlw2ifNWKnEhHBmUt0O_PI_0-l9s=')
+hash_value = d1b9457d6b063e86a2d85215f36fc98a301086adcd3c2a46748c8aad105a32939c0a203f4e67bafbf9a9b090db883d08f411297504b5625a3432b8876640c46a
+id1 = -----BEGIN CIPHERENGINE ENCRYPTED KEY-----
+id2 = -----END CIPHERENGINE ENCRYPTED KEY-----
+iterations = 1024
+passkey = ('133wCh1r6zxYJzKwugZgxVlKj48ITQ1u', '4d544d7a64304e6f4d584932656e685a536e704c6433566e576d6434566d784c616a5134535652524d58553d')
+r_and_p = (8, 1)
+salt_bytes_size = 32
+salt_values = ('62eb790e2881edc5ba2b109e7f1ce1776ade245de62682373075d944f87f0536', '62eb790e2881edc5ba2b109e7f1ce1776ade245de62682373075d944f87f0536')
+```
+
+### AES Text Encryption
+```
+[CIPHER_INFO]
+original_text = plaintext
+encrypted_text = beginning_headergAAAAABlwa7J7ox_a2zllVoy_H_9ddqbZNVCzy9hF8_rDMD5zRDT8bwd9TWD6ljyNkBvPFvGN40dkwEze3YCN822mGvrk_0IT-dLZVDoZtF0Gd32FuInSag=ending_header
+
+[SECURITY_PARAMS]
+decipher_keys = ('zZs4QClkE0sdMLjdbecfR3s_jQ1DyYWUrwwg_0f7XCo=', 'WVnlnwA47R_LzC6DqccJ9dvX5r1FeV8dLX_2320DUaU=', 'Jp6vQZZYE2QEYiUv-7OrjG4kqjCV8BDCitKxqAFim4c=')
+hash_value = d1b9457d6b063e86a2d85215f36fc98a301086adcd3c2a46748c8aad105a32939c0a203f4e67bafbf9a9b090db883d08f411297504b5625a3432b8876640c46a
+id1 = beginning_header
+id2 = ending_header
+iterations = 1024
+passkey = ('password123', '70617373776f7264313233')
+r_and_p = (8, 1)
+salt_bytes_size = 32
+salt_values = ('44e42ea54cba9d473b51a3c6ce5a3768be6ecabc9a2088f6ea70af9d3632922f', '44e42ea54cba9d473b51a3c6ce5a3768be6ecabc9a2088f6ea70af9d3632922f', '44e42ea54cba9d473b51a3c6ce5a3768be6ecabc9a2088f6ea70af9d3632922f')
+aes_iv = ab9e7e504095d382baf9f4d31e2b52ae
+aes_passkey = ('AESpassword123', '3464663135303362623666613338656434626138616261306334633637653038')
+```
+---
 ### Data Integrity Assurance Mechanism
 
 - **Cryptographic Hash Generation**: Upon the initial processing of a file or text string, the CipherEngine generates a unique cryptographic hash value for that specific data. This hash serves as a tamper-evident representation of the content, as any alterations to the data will result in a distinct hash value.
 ```python
     @classmethod
-    def _calc_file_hash(cls, __file: P) -> str:
-        file = cls._validate_file(__file)
-        sha256_hash = hashlib.sha256()
-        with open(__file, 'rb') as file:
+    def _calc_file_hash(cls, fp: P) -> str:
+        file = cls._validate_file(fp)
+        sha512_hash = SHA512.new()
+        with open(fp, "rb") as file:
             for chunk in iter(lambda: file.read(4096), b""):
-                sha256_hash.update(chunk)
-        return sha256_hash.hexdigest()
+                sha512_hash.update(chunk)
+        return sha512_hash.hexdigest()
 
     @classmethod
-    def _calc_str_hash(cls, __text: str):
-        valid_text = cls._validate_object(__text, type_is=str).encode()
-        hash_ = hashlib.sha256()
-        hash_.update(valid_text)
-        return hash_.hexdigest()
+    def _calc_str_hash(cls, string: str = None, encode=True) -> str:
+        s = string if not encode else string.encode()
+        return SHA512.new(data=s).hexdigest()
 ```
 
 - **Cryptographic Hash Comparison**: The current hash value of the data is compared to the stored hash value in the passkey configuration file. Any disparities between these values indicate potential unauthorized changes to the data.
@@ -145,12 +253,22 @@ The `CipherEngine` library incorporates a wide range of security measures to ens
 - Introduce a unique `identifiers` during encryption to enhance security and protect against potential vulnerabilities.
 - This unique identifier that is generated during the encryption process and is appended to the beginning of the encrypted file. It is used to verify the integrity of the encrypted file during the decryption process, ensuring that the file has not been tampered with.
 - The default `identifiers` is as follows:
-    - *-----BEGIN CIPHERENGINE CRYPTOGRAPHIC ENCRYPTED KEY-----*
-    - *-----END CIPHERENGINE CRYPTOGRAPHIC ENCRYPTED KEY-----*
+    - *-----BEGIN CIPHERENGINE ENCRYPTED KEY-----*
+    - *-----END CIPHERENGINE ENCRYPTED KEY-----*
 
-### Multiple Fernet Keys wit MultiFernet
+### Multiple Fernet Keys with MultiFernet
 - **`MultiFernet`** is a class that allows for the combination of multiple `Fernet` keys into a single key. This class is used to generate a unique key for each encryption process, ensuring that the same key is not used for multiple encryption processes.
 - **`Fernet`** is a class that offers symmetric encryption based on the AES algorithm in CBC mode with a 128-bit key for encryption and HMAC for authentication. It is used to encrypt and decrypt data, ensuring confidentiality and integrity.
+
+### Scrypt Key Derivation Function
+- The `CipherEngine` library employs the scrypt Key Derivation Function (KDF) for secure key derivation. This enhances the security of cryptographic operations by deriving a key from a passphrase.
+- The scrypt KDF is a key derivation function designed to be secure against hardware attacks and is well-suited for password-based key derivation.
+
+### Advanced Encryption Algorithms
+- The `CipherEngine` library provides support for advanced encryption algorithms, including:
+  - **SHA512 Hashing**: The SHA512 algorithm is employed for secure cryptographic hashing.
+  - **AES Encryption**: Utilizes the AES algorithm for strong encryption.
+  - **Padding and Unpadding**: Implements padding and unpadding techniques to ensure data integrity.
 
 >*The `CipherEngine` is designed to offer a comprehensive and on-the-go secure method for cryptographic operations, leveraging industry-standard techniques to safeguard your sensitive data.*
 ---
@@ -169,13 +287,14 @@ When generating cryptographic keys using the `generate_crypto_key` method, you h
 ## Code Base
 ```python
 @classmethod
-def _generate_key(cls, *,
-                  key_length: int = 32,
-                  exclude: str = '', # Defaults to punctuation
-                  include_all_chars: bool = False,
-                  bypass_keylength: bool = False,
-                  repeat: int = None,
-                  urlsafe_encoding: bool = None) -> str:
+def _generate_key(cls, 
+                *,
+                key_length: int = 32,
+                exclude: str = "", # Defaults to punctuation
+                include_all_chars: bool = False,
+                bypass_keylength: bool = False,
+                repeat: int = None,
+                urlsafe_encoding: bool = False) -> str:
 ```
 
 - **Method Signature**: `_generate_key` is a class method, allowing it to be accessed through any class engines. It takes parameters such as `key_length`, `exclude`, `include_all_chars`, `bypass_keylength`, `repeat`, and `urlsafe_encoding` providing customization options for key generation.
@@ -193,30 +312,31 @@ def _generate_key(cls, *,
 
 
 ```python
-    if not bypass_keylength and \
-            any((key_len < cls._MIN_KEYLENGTH,
-                key_len > cls._MAX_KEYLENGTH)):
+if not bypass_keylength and key_length < cls._MAX_KEYLENGTH:
+    raise CipherException(
+        f"For security reasons, the passkey must have a length of at least {cls._MAX_KEYLENGTH} characters. "
+        "If a shorter key is desired, provide a 'bypass_keylength' parameter."
+    )
+too_large = any(
+            (repeat_val > cls._MAX_CAPACITY, key_length > cls._MAX_CAPACITY)
+        )
+if too_large:
+    if not bypass_keylength:
         raise CipherException(
-                            f"key_length must be of value {cls._MIN_KEYLENGTH} <= x <= {cls._MAX_KEYLENGTH:_}.\n"
-                            f'Specified Key Length: {key_len}'
-                            )
+            f"The specified counts surpasses the computational capacity required for {cls.__name__!r}. "
+            "It is recommended to use a count of 32 <= x <= 512, considering the specified 'key_length'."
+            f"\nMax Capacity: {cls._MAX_CAPACITY:_}"
+            f"\nCharacter Repeat Count: {repeat_val:_}"
+        )
+    elif bypass_keylength:
+        CipherException(
+            "The specified count(s) indicate a potentially high magnitude. "
+            "Please take into account the substantial computational resources that may be required to process such large values.",
+            log_method=logger.info,
+        )
 ```
 
 - **Key Length Range Check**: Ensures that `key_length` falls within the specified range unless `bypass_keylength` is set to `True`.
----
-
-```python
-    threshold = cls._sig_larger(key_len, int(repeat_val))
-    if not threshold.status:
-        cls._MAX_TOKENS = threshold.threshold
-        CipherException(
-            "The specified values for 'key_length' or 'iterations' (repeat) exceeds the number of characters that can be cycled during repetition."
-            f" Higher values for 'max_tokens' count is recommended for better results ('max_tokens' count is now {cls._MAX_TOKENS}).",
-            log_method=logger.warning
-            )
-```
-
-- **Token Threshold Calculation**: Calculates the threshold for generating tokens based on `key_length` and `repeat`. Adjusts `MAX_TOKENS` accordingly for better results.
 ---
 
 ```python
@@ -256,72 +376,89 @@ def _generate_key(cls, *,
 ## All Available Characters
 - `ASCII letters`: abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ
 - `Digits`: 0123456789
+- `Hexdigits`: 0123456789abcdefABCDEF
 - `Punctuation`: !"#$%&'()*+,-./:;<=>?@[\]^_`{|}~
 - ~~`Whitespace`: '(space)\t\n\r\v\f'~~
     - ' ' (space), '\t' (tab), '\n' (newline), '\r' (carriage return), '\x0b' (vertical tab), '\x0c' (form feed)
-    > *Please note that `Whitespace` is automatically excluded from all available options, as it can interfere with the encryption process and is not necessary or useful for cryptographic operations.*
+    > *Please note that `Whitespace` is automatically excluded from all available options. Its inclusion could disrupt the encryption process when exporting data to a configuration file and is unnecessary for cryptographic operations.**
 
 ## Character Set Exclusion Options
 ### Exclusion Chart
 ```python
 {
-    'digits': digits
-    'punct': punctuation
-    'ascii': ascii_letters
-    'digits_punct': digits + punctuation,
-    'ascii_punct': ascii_letters + punctuation,
-    'digits_ascii': digits + ascii_letters,
-    'digits_ascii_lower': digits + ascii_letters.lower(),
-    'digits_ascii_upper': digits + ascii_letters.upper(),
-    'punct_ascii_lower': punctuation + ascii_letters.lower(),
-    'punct_ascii_upper': punctuation + ascii_letters.upper(),
-    'ascii_lower_punct': ascii_letters.lower() + punctuation,
-    'ascii_upper_punct': ascii_letters.upper() + punctuation,
-    'digits_ascii_lower_punct': digits + ascii_letters.lower() + punctuation,
-    'digits_ascii_upper_punct': digits + ascii_letters.upper() + punctuation
+    "punct": punctuation,
+    "ascii": ascii_letters,
+    "ascii_lower": ascii_lowercase,
+    "ascii_upper": ascii_uppercase,
+    "ascii_punct": ascii_letters + punctuation,
+    "ascii_lower_punct": ascii_lowercase + punctuation,
+    "ascii_upper_punct": ascii_uppercase + punctuation,
+    "digits": digits,
+    "digits_ascii": digits + ascii_letters,
+    "digits_punct": digits + punctuation,
+    "digits_ascii_lower": digits + ascii_lowercase,
+    "digits_ascii_upper": digits + ascii_uppercase,
+    "digits_ascii_lower_punct": digits + ascii_lowercase + punctuation,
+    "digits_ascii_upper_punct": digits + ascii_uppercase + punctuation,
+    "hexdigits": hexdigits,
+    "hexdigits_punct": hexdigits + punctuation,
+    "hexdigits_ascii": hexdigits + ascii_letters,
+    "hexdigits_ascii_lower": hexdigits + ascii_lowercase,
+    "hexdigits_ascii_upper": hexdigits + ascii_uppercase,
+    "hexdigits_ascii_punct": hexdigits + punctuation,
+    "hexdigits_ascii_lower_punct": hexdigits + ascii_lowercase + punctuation,
+    "hexdigits_ascii_upper_punct": hexdigits + ascii_uppercase + punctuation,
 }
 ```
 
 ### Exclusion Examples
 ```python
 crypto_key = generate_crypto_key(exclude=<str>)
-crypto_key = (De)CipherEngine._generate_key(exclude=<str>)
+# Alternatively, generate a key using any of the class engines.
+crypto_key = <class-engine>._generate_key(exclude=<str>)
 ```
-- `digits`: *Excludes digits (0-9).*
-    > ._@->htEqNvSv/_`a.+E-lJ)mzL("#~q
 - `punct`: *Excludes punctuation characters.*
     > xXLyv16WONtWW1s8ri1lfF8suJzzHqSf
 - `ascii`: *Excludes ASCII letters (both uppercase and lowercase).*
     > _\$9{92|66!6+)0<69{>},<*[/{_97_'
-- `digits_punct`: *Excludes both digits and punctuation characters.*
-    > NsLkBkXWlQgUQLsVYQeksbWKJqtOmxqZ
-- `ascii_punct`: *Excludes both ASCII letters and punctuation characters.*
-    > 14341403286159451993389011857514
-- `digits_ascii`: *Excludes both digits and ASCII letters.*
-    > *{[\[:=#,{_(-%#:*)](~&.~^@\.~:_@
-- `digits_ascii_lower`: *Excludes both digits and lowercase ASCII letters.*
-    > |UH[E&JF"HIIS#,,-|B#S\)D/+H|_(?\
-
-- `digits_ascii_upper`: *Excludes both digits and uppercase ASCII letters.*
-    > w$=q.`:_&,vvm<'s?++'i\`$o!|d@~(w
-
-- `punct_ascii_lower`: *Excludes both punctuation characters and lowercase ASCII letters.*
-    > UVME559NRTZKT3P7DEHS8ROOPTYA35BF
-
-- `punct_ascii_upper`: *Excludes both punctuation characters and uppercase ASCII letters.*
-    > ck05mdhi9a4csf1f4ejvru7p9kc5xpix
-
+- `ascii_lower`: *Excludes lowercase ASCII letters.*
+    > B\#F+=KE<9(DPDQ|)~5ALP,V//*4S>\=
+- `ascii_upper`: *Excludes uppercase ASCII letters.*
+    > guzgs5[6(9["(8d8k[g,7=$8?-9i{^*)
+- `ascii_punct`: *Excludes all ASCII letters and punctuations.*
+    > 22947751028796725748955353648359
 - `ascii_lower_punct`: *Excludes both lowercase ASCII letters and punctuation characters.*
     > Y2UJIEDBUO2AXD2SAET2QJL7LR6P776N
-
 - `ascii_upper_punct`: *Excludes both uppercase ASCII letters and punctuation characters.*
     > f1021qygcqbzd6bfaac9ng9nitpehozy
-
+- `digits`: *Excludes all digits.*
+    > ._@->htEqNvSv/_`a.+E-lJ)mzL("#~q
+- `digits_ascii`: *Excludes both digits and ASCII letters.*
+    > *{[\[:=#,{_(-%#:*)](~&.~^@\.~:_@
+- `digits_punct`: *Excludes both digits and punctuation characters.*
+    > NsLkBkXWlQgUQLsVYQeksbWKJqtOmxqZ
+- `digits_ascii_lower`: *Excludes both digits and lowercase ASCII letters.*
+    > |UH[E&JF"HIIS#,,-|B#S\)D/+H|_(?\
+- `digits_ascii_upper`: *Excludes both digits and uppercase ASCII letters.*
+    > w$=q.`:_&,vvm<'s?++'i\`$o!|d@~(w
 - `digits_ascii_lower_punct`: *Excludes digits, lowercase ASCII letters, and punctuation characters.*
     > UHSTDQQZWVAHBFLMZYKUXIDXSTTPLQXE
-
 - `digits_ascii_upper_punct`: *Excludes digits, uppercase ASCII letters, and punctuation characters.*
     > dhwzxoqzubwmrieyerpxrfttfeohacxl
+- `hexdigits`: *Excludes hexdigit characters*
+    > |;gMWX;P\UuuN^\k{m|x=~hMOR}<[H=-
+- `hexdigits_punct`: *Excludes hexdigits and punctuation characters.*
+    > jXnVVJxHtPSlTHytKiNYGslRisrypIoo
+- `hexdigits_ascii`: *Excludes hexdigits and ASCII letters.*
+    > .":"&.&`!_.*@]*'+-<}+~<<,~!~_,~>
+- `hexdigits_ascii_lower`: *Excludes hexdigits and lowercase ASCII characters.*
+    > #OW_R>R;UJ;J@U#X'=:+>TIQ+}{K@S|U
+- `hexdigits_ascii_upper`: *Excludes hexdigits and uppercaseASCII characters.*
+    > [+y/.]*?ls\$jh\r!gy<^or%j)l~:w!'
+- `hexdigits_ascii_lower_punct`: *Excludes hexdigits and lowercase ASCII letters and punctuation characters.*
+    > XHYMPXJLPXOOMYSYYGWRYYNUXYPTZRRT
+- `hexdigits_ascii_upper_punct`: *Excludes hexdigits and uppercase ASCII letters and punctuation characters.*
+    > xjhvyqswzjoopqnnghwzntioryothxil
 ---
 
 # CipherEngine Class
@@ -330,19 +467,34 @@ crypto_key = (De)CipherEngine._generate_key(exclude=<str>)
 
 ## Attributes
 
-- `passkey`: The passphrase or key used for encryption (optional).
-- `key_length`: The length of the cryptographic decipher key (default: 32).
-- `exclude_chars`: Characters to exclude during passphrase generation (default: punctuation).
-- `backup_file`: Flag indicating whether to create a backup of the original file (default: True).
-- `num_of_keys`: The number of cryptographic keys to be generated (default: 5).
-- `export_passkey`: Flag indicating whether to export the passphrase to a separate file (default: True).
-- `include_all_chars`: Flag indicating whether to include all characters during passphrase generation (default: False).
-- `serializer`: The type of serialization for exporting the passkey file ('json' or 'ini').
+- `file`: str | Path | None: The file to be processed and encrypted.
+- `text`: str | None: The text to be processed and encrypted.
+- `file_name`: str | None: The name of the file containing the encryption details.
+- `passkey`: str | int | None: The passphrase or integer to be used for encryption (default: None).
+- `gui_passphrase`: bool: Flag indicating whether to use GUI for passphrase entry (default: False).
+- `num_of_salts`: int: Number of `Fernet` keys to be generated and processed with `MultiFernet`.
+- `export_path`: Path | None: The path where exported files will be stored (default: None).
+- `export_passkey`: bool: Flag indicating whether to export the passphrase to a separate file (default: True).
+- `serializer`: str | None: The type of serialization to be used for exporting the passkey file ('json' or 'ini').
+- `iterations`: int | None: The number of iterations for key derivation (default: None).
+- `min_power`: bool: Flag indicating whether to enforce minimum passphrase strength (default: False).
+- `max_power`: bool: Flag indicating whether to enforce maximum passphrase strength (default: False).
+- `advanced_encryption`: bool: Flag indicating whether to use advanced encryption features (default: False).
+- `special_keys`: bool | None: If True, uses CipherEngine's custom cryptographic key generation, otherwise uses default keys generated from `Fernet` (default: None).
+
+## Cryptographic Attributes:
+- `key_length`: int: The desired key length for Fernet encryption (default: 32).
+- `bypass_keylength`: bool: Flag indicating whether to bypass key length validation (default: False).
+- `include_all_chars`: bool: Flag indicating whether to include all characters during passphrase generation (default: False).
+- `exclude_chars`: str | None: Characters to exclude during passphrase generation (default: None).
+
+
 ---
 
 ## Methods
 - `encrypt_file()`: Encrypts a specified file.
 - `encrypt_text()`: Encrypts a specified text.
+- `quick_encrypt()`: Encrypts a specified text using only `Fernet`.
 
 ## Example
 ```python
@@ -361,6 +513,7 @@ The `DecipherEngine` class, an extension of the CipherEngine, is dedicated to de
 - `ciphertuple` (NamedTuple): A NamedTuple containing details generated during the quick encryption process. It includes information such as the algorithm type, passkey, encrypted text, hash type, hash value, CPU power, original text, and salt value.
 - `passkey_file`: str | Path: The path to the file containing the encryption details.
 - `overwrite_file`: bool | None: Flag indicating whether to overwrite the original file during decryption (default: False).
+- `manual_kwgs`: dict: Dictionary containing encryption data to be used for decryption.
 
 
 ## Methods
@@ -368,7 +521,6 @@ The `DecipherEngine` class, an extension of the CipherEngine, is dedicated to de
 - `decrypt_file()`: Decrypts an encrypted file.
 - `decrypt_text()`: Decrypts encrypted text.
 - `quick_decrypt()`: Quickly decrypts text data and exports necessary information on-the-go.
-    > **Back-bone for quick_deciphertext**
 
 ## Example
 
@@ -388,11 +540,18 @@ decipher.decrypt_file()
 ```python
 from cipher_engine import *
 # __all__ = (
-# 'CipherEngine', 'DecipherEngine',
-# 'encrypt_file', 'decrypt_file',
-# 'encrypt_text', 'decrypt_text',
-# 'CipherException', 'generate_crypto_key',
-# )
+    # "METADATA",
+    # "CipherEngine",
+    # "DecipherEngine",
+    # "CipherException",
+    # "generate_crypto_key",
+    # "encrypt_file",
+    # "decrypt_file",
+    # "encrypt_text",
+    # "decrypt_text",
+    # "quick_encrypt",
+    # "quick_decrypt",
+)
 ```
 ---
 ### Generate a Secure Cryptographic Key
@@ -414,7 +573,7 @@ crypto_key = generate_crypto_key(exclude='digits_punct')
 # Encrypt text using CipherEngine.encrypt_text
 result_encrypt_text = encrypt_text(text='Hello, World!', num_of_keys=20, export_path='output')
 # Output: (NamedTuple)
-# CipherTuple(decipher_keys=('SXUyTWl3ZG90bXhvbWxsMU16ZUtIY3Jwc1o4eG9RZkY=', 'cm9xeWtBWmRBb0g2MFlQZEtldWhSaWpsc0hCUjRpeTE=', 'cUxqbTZxbUFDVHVBRkNMUlhscXVzMlRtemlXelJKSFo=', 'RFFVOTV5RktackM3TXhDZ3RQRlRKOW9rak9SZGtwWDE=', 'c3hoSmFIbW1tTERUZGZoSmVGMmxUUE5zOUFiVnlUVE4='), encrypted_text='-----BEGIN CIPHERENGINE CRYPTOGRAPHIC ENCRYPTED KEY-----gAAAAABlqMSYIYn3QmhFpOyDTK8NGXJ-yhe7_ovNW62kK5TuRwtIiEXqh47bG9Rz6IWu85xwtase1L4-CHaQwKQbtBpjuI5i1w==-----END CIPHERENGINE CRYPTOGRAPHIC ENCRYPTED KEY-----', fernets=[<fernets>...], id1='-----BEGIN CIPHERENGINE CRYPTOGRAPHIC ENCRYPTED KEY-----', id2='-----END CIPHERENGINE CRYPTOGRAPHIC ENCRYPTED KEY-----', original_text='Hello, World!'
+CipherTuple(original_text='hello', encrypted_text='-----BEGIN CIPHERENGINE ENCRYPTED KEY-----gAAAAABlwcnmXXDioh1crkkbEwmY5qBe6Qun0_qzXZefWcAwxhqbAsw8giX0m6Tx4LXcv9fFOhILuwX9ROFeQD_4zgXToU72jw==-----END CIPHERENGINE ENCRYPTED KEY-----', decipher_keys=('6jzNzRksHQnv3MzzoLADhtHppSPK2WCQd420mlirsEw=', 'M8nD8Z9gHs5Qug15GIws09bP2zi18c_XWdwx5DlOKvg='), hash_value='9b71d224bd62f3785d96d46ad3ea3d73319bfbc2890caadae2dff72519673ca72323c3d99ba5c11d7c7acc6e14b8c5da0c4663475c2e5c3adef46f73bcdec043', id1='-----BEGIN CIPHERENGINE ENCRYPTED KEY-----', id2='-----END CIPHERENGINE ENCRYPTED KEY-----', iterations=1048576, passkey=('R5yQK8BwvNWEsDRsxMuN8zuooVryjLxk', '556a563555557334516e6432546c6446633052536333684e64553434656e567662315a796557704d6547733d'), r_and_p=(8, 1), salt_bytes_size=32, salt_values=('bf0318472989375bdcc6ee565f488a81c44b0bc2d9466e33a4412872d49b89c0', 'bf0318472989375bdcc6ee565f488a81c44b0bc2d9466e33a4412872d49b89c0'))
 ```
 ---
 
@@ -422,14 +581,14 @@ result_encrypt_text = encrypt_text(text='Hello, World!', num_of_keys=20, export_
 ```python
 # Decrypt text using DecipherEngine.decrypt_text
 decrypt_text(ciphertuple=result_encrypt_text)
-# Output: (NamedTuple)
-# DecipherTuple(decrypted_text='Hello, World!', hash_value='dffd6021bb2bd5b0af676290809ec3a53191dd81c7f70a4b28688a362182986f')
-# Manually pass in attributes
+# Alternatively, can pass in the attributes manually
 result_decrypt_text = decrypt_text(
     passkey_file='output/info.ini',
     export_path='output/decrypted',
     overwrite_file=True
     )
+# Output: (NamedTuple)
+DecipherTuple(decrypted_text='unencrypted-text', hash_value='9deabffbf5b50efd1f9b75133edf33d00372599babfef5dd9d1fa5425610ad6643c03b4f5ea6c32b7d8ec5f1891de6c297f1a04a3344f7e16c497354ce7736a6')
 ```
 ---
 
@@ -438,22 +597,49 @@ result_decrypt_text = decrypt_text(
 # Encrypt a file using CipherEngine.encrypt_file
 result_encrypt_file = encrypt_file(
     file='test.txt',
-    overwrite_file=True,
+    overwrite_file=False,
     export_path='output')
 # Output: (NamedTuple)
-# CipherTuple(decipher_keys=('SXUyTWl3ZG90bXhvbWxsMU16ZUtIY3Jwc1o4eG9RZkY=', 'cm9xeWtBWmRBb0g2MFlQZEtldWhSaWpsc0hCUjRpeTE=', 'cUxqbTZxbUFDVHVBRkNMUlhscXVzMlRtemlXelJKSFo=', 'RFFVOTV5RktackM3TXhDZ3RQRlRKOW9rak9SZGtwWDE=', 'c3hoSmFIbW1tTERUZGZoSmVGMmxUUE5zOUFiVnlUVE4='), encrypted_file='test.aes', fernets=[<fernets>...], id1='-----BEGIN CIPHERENGINE CRYPTOGRAPHIC ENCRYPTED KEY-----', id2='-----END CIPHERENGINE CRYPTOGRAPHIC ENCRYPTED KEY-----', original_file='test.txt'
+CipherTuple(original_file=PosixPath('test.txt'), encrypted_file=PosixPath('encrypted_test.aes'), file_hash_value='04ca92b5d6deaae50d209010ed4bd2a5299b527b2a878218bde3ee5bbf782b38471df2db2822b18a768af8d65cb93428ff2a4312da8e8339a5f0272d67e2e191', decipher_keys=('kY7w1vAXB8RJ_4FpfymtSP1u5LPhBFk-FNHtv_7RYgM=', 'awH-KMrjB47xinZ3hd_QsKe80vU1hwIivNNYQYbuXdQ='), hash_value='04ca92b5d6deaae50d209010ed4bd2a5299b527b2a878218bde3ee5bbf782b38471df2db2822b18a768af8d65cb93428ff2a4312da8e8339a5f0272d67e2e191', id1='-----BEGIN CIPHERENGINE ENCRYPTED KEY-----', id2='-----END CIPHERENGINE ENCRYPTED KEY-----', iterations=1024, passkey=('ozoGWjOqDxQ55qcV5J1VUOFMLrVQiMOS', '623370765231647154334645654645314e58466a566a564b4d565a5654305a4e54484a5755576c4e54314d3d'), r_and_p=(8, 1), salt_bytes_size=32, salt_values=('8333f1ef6079337e3c60c2aff72fc544ad2efc9349c17b891484dabc9b3501cf', '8333f1ef6079337e3c60c2aff72fc544ad2efc9349c17b891484dabc9b3501cf'))
 ```
 ---
 
 ### Decrypt a file using decrypt_file
 ```python
 # Decrypt a file using DecipherEngine.decrypt_file
-= decrypt_file()
 result_decrypt_file = decrypt_file(
     passkey_file='output/test_passkey.ini',
-    overwrite_file=True)
+    overwrite_file=False)
 # Output: (NamedTuple)
-# DecipherTuple(decrypted_file=PosixPath('test.aes'), hash_value='5c0c10f62a2798b8f4f2cbb3d677fc9330d87250d3a1b27830ab050ba21c87ab')
+DecipherTuple(decrypted_file=PosixPath('decrypted_encrypted_test.dec'), hash_value='04ca92b5d6deaae50d209010ed4bd2a5299b527b2a878218bde3ee5bbf782b38471df2db2822b18a768af8d65cb93428ff2a4312da8e8339a5f0272d67e2e191')
+```
+
+### Quickly Encrypt Files using quick_encrypt
+```python
+quick_encrypt(file="test.aes")
+# Output: (NamedTuple)
+QCipherTuple(original_file=PosixPath('test.aes'), encrypted_file=PosixPath('encrypted_test.aes'), hash_value='04ca92b5d6deaae50d209010ed4bd2a5299b527b2a878218bde3ee5bbf782b38471df2db2822b18a768af8d65cb93428ff2a4312da8e8339a5f0272d67e2e191', passkey=('yuQYlxGuDSG97YSdzDOZvOrjq88gfOnb', 'OWIxN2RkOThhM2I1ZjVhMzA2MTVlYzlhYTA3NDA3NDM='))
+```
+
+### Quickly Decrypt Files using quick_decrypt
+```python
+quick_decrypt(ciphertuple=a)
+# Output: (NamedTuple)
+QDecipherTuple(decrypted_file=PosixPath('encrypted_test.aes'), hash_value='04ca92b5d6deaae50d209010ed4bd2a5299b527b2a878218bde3ee5bbf782b38471df2db2822b18a768af8d65cb93428ff2a4312da8e8339a5f0272d67e2e191')
+```
+
+### Quickly Encrypt Text using quick_encrypt
+```python
+quick_encrypt(text="unencrypted-text")
+# Output: (NamedTuple)
+QCipherTuple(original_text='unencrypted-text', encrypted_text='gAAAAABlwcvyACkfYqf3Zw1ShY2MpNwnAA9eZSa0phLlOuFYy1F-26ExIRuCowaSnbFxIr9TKCnSAnYccO9TH2595ez0sGboS57XP4AFAU9xh5gDtac7UOU=', hash_value='9deabffbf5b50efd1f9b75133edf33d00372599babfef5dd9d1fa5425610ad6643c03b4f5ea6c32b7d8ec5f1891de6c297f1a04a3344f7e16c497354ce7736a6', passkey=('AzgV81oCpXe8G9apFs3PqY9vCgBAwacu', 'ZjFkOWUyYmNkOTYyMjFhZWIwZTQwZmQ0OWNmMWU3NGU='))
+```
+
+### Quickly Decrypt Text using quick_decrypt
+```python
+quick_decrypt(ciphertuple=a)
+# Output: (NamedTuple)
+QDecipherTuple(decrypted_text='unencrypted-text', hash_value='9deabffbf5b50efd1f9b75133edf33d00372599babfef5dd9d1fa5425610ad6643c03b4f5ea6c32b7d8ec5f1891de6c297f1a04a3344f7e16c497354ce7736a6')
 ```
 ---
 
@@ -464,12 +650,14 @@ result_decrypt_file = decrypt_file(
 
 # Roadmap
 ## Upcoming Features
-- **`Personal Unique Encryption Identifier`**: Provide users with the option to specify a personalized encryption header, allowing them to define a unique identifier according to their preferences, rather than relying on the default setting.
+- ~~**`Personal Unique Encryption Identifier`**: Provide users with the option to specify a personalized encryption header, allowing them to define a unique identifier according to their preferences, rather than relying on the default setting.~~
 - **`Performance Optimization`**: Focus on optimizing performance to reduce computational overhead, particularly during encryption and decryption processes with higher iteration counts. These enhancements aim to streamline and expedite cryptographic operations for improved efficiency.
-- **`CLI-Implementation`**: Integrate all cipher engine methods and features into a comprehensive CLI tool, allowing users to seamlessly encrypt and decrypt data from the command line.
+- ~~**`CLI-Implementation`**: Integrate all cipher engine methods and features into a comprehensive CLI tool, allowing users to seamlessly encrypt and decrypt data from the command line.~~
 > *This project is continuously evolving, and these features are anticipated to be implemented in future releases*
 
 ## Progress Table
+- [x] Implement quick ciphers using only Fernet
+- [x] Implement AES encryption
 - [x] Personal Unique Encryption Identifier
 - [x] Performance Optimization
 - [x] CLI-Implementation
