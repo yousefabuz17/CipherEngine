@@ -1889,6 +1889,19 @@ class DecipherEngine(_BaseEngine):
             self._encrypted_data if self._typeis_file else decrypted_text, hash_value
         )
 
+from typing import overload
+
+@overload
+def generate_crypto_key(*,
+        key_length: int = 32,
+        exclude: str = "",
+        include_all_chars: bool = False,
+        bypass_keylength: bool = False,
+        repeat: int = None,
+        urlsafe_encoding=False,
+    ) -> Union[str, bytes]:
+    pass
+
 
 def generate_crypto_key(**kwargs) -> str:
     """
@@ -1924,6 +1937,24 @@ def generate_crypto_key(**kwargs) -> str:
         - The default key includes digits and ascii_letters only.
     """
     return _BaseCryptoEngine._generate_key(**kwargs)
+
+
+@overload
+def quick_encrypt(*,
+        text: str = None,
+        file: Union[str, Path] = None,
+        file_name: str = None,
+        export_path: Path = None,
+        export_passkey: bool = True,
+        backup_file: bool = True,
+        passkey: Union[str, int] = None,
+        gui_passphrase: bool = False,
+        bypass_keylength: bool = False,
+        include_all_chars: bool = False,
+        exclude_chars: str = None,
+        special_keys: bool = None,
+    ) -> NamedTuple:
+    pass
 
 
 @_BaseEngine._print_headers(engine="QCipherEngine", method="text encryption")
@@ -1965,9 +1996,51 @@ def quick_encrypt(**kwargs):
     return CipherEngine(**kwargs).quick_encrypt()
 
 
+@overload
+def quick_decrypt(*,
+        text: str = None,
+        file: Union[str, Path] = None,
+        file_name: str = None,
+        export_path: Path = None,
+        export_passkey: bool = True,
+        backup_file: bool = True,
+        passkey: Union[str, int] = None,
+        gui_passphrase: bool = False,
+        bypass_keylength: bool = False,
+        include_all_chars: bool = False,
+        exclude_chars: str = None,
+        special_keys: bool = None,
+    ) -> NamedTuple:
+    pass
+
+
 @_BaseEngine._print_headers(engine="QDecipherEngine", method="text decryption")
 def quick_decrypt(**kwargs):
     return DecipherEngine(**kwargs).quick_decrypt()
+
+
+@overload
+def encrypt_file(*,
+        file: Union[str, Path] = None,
+        file_name: str = None,
+        export_path: Path = None,
+        export_passkey: bool = True,
+        serializer: str = None,
+        key_length: int = 32,
+        iterations: int = None,
+        min_power: bool = False,
+        max_power: bool = False,
+        backup_file: bool = True,
+        advanced_encryption: bool = False,
+        passkey: Union[str, int] = None,
+        gui_passphrase: bool = False,
+        bypass_keylength: bool = False,
+        num_of_salts: int = 1,
+        include_all_chars: bool = False,
+        exclude_chars: str = None,
+        special_keys: bool = None,
+    ) -> NamedTuple:
+    pass
 
 
 @_BaseEngine._print_headers(engine="CipherEngine", method="file encryption")
@@ -2015,9 +2088,50 @@ def encrypt_file(**kwargs) -> NamedTuple:
     return CipherEngine(**kwargs).encrypt_file()
 
 
+@overload
+def decrypt_file(*,
+        file: Union[str, Path] = None,
+        file_name: str = None,
+        export_path: Path = None,
+        export_passkey: bool = True,
+        serializer: str = None,
+        passkey: Union[str, int] = None,
+        gui_passphrase: bool = False,
+        bypass_keylength: bool = False,
+        num_of_salts: int = 1,
+        include_all_chars: bool = False,
+        exclude_chars: str = None,
+        special_keys: bool = None,
+    ) -> NamedTuple:
+    pass
+
+
 @_BaseEngine._print_headers(engine="DecipherEngine", method="file decryption")
 def decrypt_file(**kwargs) -> NamedTuple:
     return DecipherEngine(**kwargs).decrypt_file()
+
+
+@overload
+def encrypt_text(*,
+        text: str = None,
+        file_name: str = None,
+        export_path: Path = None,
+        export_passkey: bool = True,
+        serializer: str = None,
+        iterations: int = None,
+        min_power: bool = False,
+        max_power: bool = False,
+        advanced_encryption: bool = False,
+        passkey: Union[str, int] = None,
+        key_length: int = 32,
+        gui_passphrase: bool = False,
+        bypass_keylength: bool = False,
+        num_of_salts: int = 1,
+        include_all_chars: bool = False,
+        exclude_chars: str = None,
+        special_keys: bool = None,
+    ) -> NamedTuple:
+    pass
 
 
 @_BaseEngine._print_headers(engine="CipherEngine", method="text encryption")
@@ -2062,6 +2176,15 @@ def encrypt_text(**kwargs) -> NamedTuple:
         - NamedTuple: Tuple containing information about the encryption process.
     """
     return CipherEngine(**kwargs).encrypt_text()
+
+
+@overload
+def decrypt_text(*,
+        ciphertuple: NamedTuple,
+        passkey_file: Union[str, Path],
+        manual_kwgs: dict[str, Any],
+    ) -> NamedTuple:
+    pass
 
 
 @_BaseEngine._print_headers(engine="DecipherEngine", method="text decryption")

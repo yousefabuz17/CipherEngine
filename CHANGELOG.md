@@ -1,5 +1,10 @@
 # Change-log
 
+## Version 0.4.1 (2024-02-07)
+- **Enhanced Functionality:**
+  - Added overload functions for better code assistance and documentation.
+  - Overload functions provide a detailed list of available keyword arguments for each function, improving usability.
+
 ## Version 0.4.0 (2024-02-06)
 - **Codebase Overhaul:**
   - Undertook a comprehensive rewrite of the entire codebase for improved readability and maintainability.
