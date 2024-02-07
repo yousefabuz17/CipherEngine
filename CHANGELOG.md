@@ -1,5 +1,16 @@
 # Change-log
 
+## Version 0.4.0 (2024-02-06)
+- **Codebase Overhaul:**
+  - Undertook a comprehensive rewrite of the entire codebase for improved readability and maintainability.
+  - Shifted from a diverse set of algorithms to a streamlined approach, exclusively utilizing `MultiFernet` and `AES` encryption for enhanced performance and heightened security.
+  - Introduced quick encryption option utilizing `Fernet` for users seeking a swift and straightforward encryption process.
+
+- **Upcoming Feature Enhancements:**
+  - No new features are currently scheduled for release.
+  - Ongoing efforts to enhance the codebase and documentation.
+
+
 ## Version 0.3.0 (2024-01-18)
 - **Comprehensive Code Restructuring**
   - Completely restructured the entire codebase to enhance readability and maintainability.
