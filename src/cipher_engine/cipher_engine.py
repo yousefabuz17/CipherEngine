@@ -74,6 +74,7 @@ from typing import (
     TypeVar,
     Optional,
     Iterator,
+    overload,
     Union,
     NoReturn,
 )
@@ -1162,9 +1163,7 @@ class CipherEngine(_BaseEngine):
     advanced_encryption: Optional[bool] = field(repr=False, default=False)
 
     def __post_init__(self):
-        logger = get_logger(
-            level=logging.INFO, write_log=False if self.verbose else True
-        )
+        logger.write_log = False if self.verbose else True
 
         self._file_name = self._validate_object(
             self.file_name, type_is=Path, arg="File Name"
@@ -1619,10 +1618,8 @@ class DecipherEngine(_BaseEngine):
     manual_kwgs: dict = field(repr=False, default_factory=dict)
 
     def __post_init__(self):
-        logger = get_logger(
-            level=logging.INFO, write_log=False if self.verbose else True
-        )
-
+        logger.write_log = False if self.verbose else True
+        
         # ** For configuration files (.cfg)
         if all((self.passkey_file, self.ciphertuple, self.manual_kwgs)):
             raise CipherException("Cannot simultaneously specify all arguments.")
@@ -1889,7 +1886,6 @@ class DecipherEngine(_BaseEngine):
             self._encrypted_data if self._typeis_file else decrypted_text, hash_value
         )
 
-from typing import overload
 
 @overload
 def generate_crypto_key(*,
@@ -2206,7 +2202,7 @@ quick_decrypt.__doc__ = decrypt_file.__doc__ = decrypt_text.__doc__
 
 # XXX Metadata Information
 METADATA = {
-    "version": (__version__ := "0.4.0"),
+    "version": (__version__ := "0.4.1"),
     "license": (__license__ := "Apache License, Version 2.0"),
     "url": (__url__ := "https://github.com/yousefabuz17/CipherEngine"),
     "author": (__author__ := "Yousef Abuzahrieh <yousef.zahrieh17@gmail.com"),
