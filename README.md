@@ -65,6 +65,7 @@ Welcome to `CipherEngine`, a powerful Python library dedicated to symmetric key 
 - [Contributors and Feedback](#contributors-and-feedback)
     - [Contributing](#contributing)
     - [Feedback](#feedback)
+    - [Contact-Information](#contact-information)
 - [Important Notes](#important-notes)
     - [Maximum Number of Fernet Keys](#maximum-number-of-fernet-keys)
     - [Beta Release Status](#beta-release-status)
@@ -690,6 +691,7 @@ Feedback is crucial for the improvement of the `CipherEngine` project. If you en
 1. **GitHub Issues**: Open an issue on the [GitHub repository](https://github.com/yousefabuz17/cipherengine) to report bugs or suggest enhancements.
 
 2. **Contact**: Reach out to the project maintainer via the following:
+### Contact Information
     - [Discord](https://discord.com/users/581590351165259793)
     - [Gmail](yousefzahrieh17@gmail.com)
 
