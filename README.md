@@ -78,7 +78,7 @@ Welcome to `CipherEngine`, a powerful Python library dedicated to symmetric key 
 # Requirements
 - #### **`Python`**: ~=3.10
 - #### **`cryptography`**: ~=41.0.4
-- #### **`8pycryptodome`**: ~=3.20.0
+- #### **`pycryptodome`**: ~=3.20.0
 - #### **`numpy`**: ~=1.26.3
 - #### **`psutil`**: ~=5.9.7
 - #### **`pytest`**: ~=7.4.3

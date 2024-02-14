@@ -1,5 +1,8 @@
 # Change-log
 
+## Version 0.4.3 (2024-02-14)
+- Few adjustments on documentation with no new features or enhancements.
+
 ## Version 0.4.2 (2024-02-11)
 - Few adjustments with no new features or enhancements.
 
